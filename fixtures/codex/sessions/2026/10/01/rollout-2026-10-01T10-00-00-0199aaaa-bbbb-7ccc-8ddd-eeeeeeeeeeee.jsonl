@@ -1,0 +1,9 @@
+{"timestamp":"2026-10-01T10:00:00.000Z","type":"session_meta","payload":{"id":"0199aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee","timestamp":"2026-10-01T10:00:00.000Z","cwd":"/work/demo","originator":"codex_cli_rs","cli_version":"0.50.0"}}
+{"timestamp":"2026-10-01T10:00:01.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Add input validation"}]}}
+{"timestamp":"2026-10-01T10:00:01.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"<environment_context>cwd</environment_context>"}]}}
+{"timestamp":"2026-10-01T10:00:01.500Z","type":"event_msg","payload":{"type":"user_message","message":"Add input validation"}}
+{"timestamp":"2026-10-01T10:00:05.000Z","type":"event_msg","payload":{"type":"agent_message","message":"Working on validation"}}
+{"timestamp":"2026-10-01T10:00:06.000Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1000,"cached_input_tokens":600,"output_tokens":80,"reasoning_output_tokens":20,"total_tokens":1080}}}}
+{"timestamp":"2026-10-01T10:01:00.000Z","type":"event_msg","payload":{"type":"user_message","message":"Use zod for the schema"}}
+{"timestamp":"2026-10-01T10:02:00.000Z","type":"event_msg","payload":{"type":"task_complete","last_agent_message":"Validation added with zod; tests not run yet."}}
+{"timestamp":"2026-10-01T10:02:01.000Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":2500,"cached_input_tokens":1800,"output_tokens":300,"reasoning_output_tokens":50,"total_tokens":2800}}}}

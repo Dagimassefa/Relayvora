@@ -1,0 +1,24 @@
+{
+  "name": "agentrelay-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Local-first continuity and token-efficiency layer for AI coding agents",
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "agentrelay": "node apps/cli/dist/bin.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.7"
+  }
+}

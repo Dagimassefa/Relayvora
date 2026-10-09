@@ -1,0 +1,11 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/storage" },
+    { "path": "packages/git" },
+    { "path": "packages/adapter-claude" },
+    { "path": "packages/adapter-codex" },
+    { "path": "apps/cli" }
+  ]
+}

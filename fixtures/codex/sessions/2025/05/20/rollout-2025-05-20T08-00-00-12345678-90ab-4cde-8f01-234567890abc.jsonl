@@ -1,0 +1,3 @@
+{"id":"12345678-90ab-4cde-8f01-234567890abc","timestamp":"2025-05-20T08:00:00.000Z","instructions":null}
+{"type":"message","role":"user","content":[{"type":"input_text","text":"legacy rollout without cwd"}]}
+{"type":"message","role":"assistant","content":[{"type":"output_text","text":"legacy reply"}]}
