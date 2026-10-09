@@ -4,6 +4,7 @@ import path from 'node:path';
 import {
   directoryExists,
   finalizeSessions,
+  type BundledBinarySpec,
   pickString,
   probeExecutable,
   readJsonlHead,
@@ -56,6 +57,12 @@ export async function readClaudeSession(file: string): Promise<{ session: Sessio
   };
 }
 
+/** The Claude Code extension (VS Code, Cursor, ...) ships the native CLI inside the extension. */
+export const CLAUDE_BUNDLED: BundledBinarySpec = {
+  extensionPrefix: 'anthropic.claude-code-',
+  candidates: (dir, platform) => [path.join(dir, 'resources', 'native-binary', platform === 'win32' ? 'claude.exe' : 'claude')],
+};
+
 export const claudeAdapter: AgentAdapter = {
   id: 'claude',
   displayName: 'Claude Code',
@@ -68,7 +75,7 @@ export const claudeAdapter: AgentAdapter = {
   },
 
   probe(options?: ProbeOptions) {
-    return probeExecutable('claude', options);
+    return probeExecutable('claude', options, CLAUDE_BUNDLED);
   },
 
   readTranscript(sessionPath: string) {

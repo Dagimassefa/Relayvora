@@ -1,7 +1,7 @@
 import { AGENTRELAY_VERSION, AgentRelayError, ExitCode } from '@agentrelay/core';
 import { Command, CommanderError, InvalidArgumentError, Option } from 'commander';
 import { ZodError } from 'zod';
-import { type CreateCheckpointOptions, createCheckpoint } from './checkpoint-service.js';
+import { type CreateCheckpointOptions, type CreateCheckpointResult, createCheckpoint } from './checkpoint-service.js';
 import {
   renderCheckpointList,
   renderSummary,
@@ -15,6 +15,7 @@ import { type ExportOptions, runExport } from './commands/export.js';
 import { renderHome, runHome } from './commands/home.js';
 import { renderInit, runInit } from './commands/init.js';
 import { renderSessions, runSessions } from './commands/sessions.js';
+import { copyToClipboard } from './clipboard.js';
 import { createContext } from './context.js';
 import { emit } from './output.js';
 import { banner, statusIcon } from './ui/components.js';
@@ -61,7 +62,8 @@ function addCheckpointOptions(cmd: Command): Command {
     .option('--verify <command>', 'run a command (no shell) and record its exit code as evidence; repeatable', collect)
     .option('--verify-timeout <seconds>', 'timeout per verification command', parsePositiveInt, 600)
     .option('--budget <tokens>', 'token budget for the handoff text (estimated tokens)', parsePositiveInt)
-    .option('--no-transcript', 'do not read the session transcript');
+    .option('--no-transcript', 'do not read the session transcript')
+    .option('--copy', 'copy the handoff to the clipboard, ready to paste into the agent panel');
 }
 
 interface CheckpointFlags {
@@ -78,6 +80,7 @@ interface CheckpointFlags {
   verifyTimeout: number;
   budget?: number;
   transcript: boolean;
+  copy?: boolean;
 }
 
 function toCreateOptions(flags: CheckpointFlags, opts: GlobalOptions, ui: Ui): CreateCheckpointOptions {
@@ -98,6 +101,19 @@ function toCreateOptions(flags: CheckpointFlags, opts: GlobalOptions, ui: Ui): C
   if (flags.budget !== undefined) o.budget = flags.budget;
   if (!opts.json) o.progress = terminalProgress(ui.err, process.stderr);
   return o;
+}
+
+/** Copies the handoff when --copy is set. A clipboard failure is a warning: the checkpoint is already saved. */
+async function maybeCopy(flags: CheckpointFlags, result: CreateCheckpointResult, ui: Ui, json: boolean): Promise<boolean> {
+  if (!flags.copy) return false;
+  try {
+    await copyToClipboard(result.checkpoint.handoff.prompt ?? '');
+    return true;
+  } catch (error) {
+    if (!json) process.stderr.write(`  ${ui.err.fg('amber', ui.err.sym.warn)} ${ui.err.fg('amber', (error as Error).message)}
+`);
+    return false;
+  }
 }
 
 function styleHelp(program: Command, t: Theme): void {
@@ -176,7 +192,8 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
   ).action(async (flags: CheckpointFlags, cmd: Command) => {
     const { opts, ctx } = ctxFor(cmd);
     const result = await createCheckpoint(ctx, toCreateOptions(flags, opts, ui));
-    emit(opts, summarize(result), (s) => renderSummary(s, ui.out));
+    const copied = await maybeCopy(flags, result, ui, Boolean(opts.json));
+    emit(opts, summarize(result, copied), (s) => renderSummary(s, ui.out));
   });
 
   checkpoint
@@ -239,12 +256,13 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
       );
     }
     const result = await createCheckpoint(ctx, toCreateOptions(flags, opts, ui));
+    const copied = await maybeCopy(flags, result, ui, Boolean(opts.json));
     if (opts.json) {
-      emit(opts, { ...summarize(result), markdown: result.checkpoint.handoff.prompt }, () => '');
+      emit(opts, { ...summarize(result, copied), markdown: result.checkpoint.handoff.prompt }, () => '');
     } else {
       // The handoff text goes to stdout (pipe-friendly); the card goes to stderr.
       process.stdout.write(highlightMarkdown(result.checkpoint.handoff.prompt ?? '', ui.out));
-      process.stderr.write(`${renderSummary(summarize(result), ui.err)}\n`);
+      process.stderr.write(`${renderSummary(summarize(result, copied), ui.err)}\n`);
     }
   });
 

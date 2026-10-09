@@ -19,10 +19,15 @@ export interface CheckpointSummary {
   handoff: { file: string; estimatedTokens: number | null; budgetTokens: number | null; deferred: number; deferredTokens: number };
   usage: Checkpoint['usage'];
   warnings: string[];
+  /** One-line prompt that points the next agent at the handoff file. */
+  pointer: string;
+  /** True when the handoff text was copied to the clipboard (--copy). */
+  copied: boolean;
 }
 
-export function summarize(result: CreateCheckpointResult): CheckpointSummary {
+export function summarize(result: CreateCheckpointResult, copied = false): CheckpointSummary {
   const cp = result.checkpoint;
+  const relFile = path.relative(cp.project.root, result.handoffFile).split(path.sep).join('/');
   const commands = cp.evidence.filter((e) => e.type === 'command' || e.type === 'test');
   const files = cp.evidence.filter((e) => e.type === 'git-diff' || e.type === 'file');
   return {
@@ -51,6 +56,8 @@ export function summarize(result: CreateCheckpointResult): CheckpointSummary {
     },
     usage: cp.usage,
     warnings: cp.warnings,
+    pointer: `Continue the task in ${relFile}. Read it first, verify its claims, then carry on.`,
+    copied,
   };
 }
 
@@ -66,6 +73,8 @@ const PROVENANCE_TAG: Record<string, string> = {
   inferred: 'inferred',
   'agent-reported': 'agent-reported',
 };
+
+const PANEL_NAMES: Record<string, string> = { claude: 'Claude Code', codex: 'Codex' };
 
 /** The "mission card" printed after a checkpoint is captured. */
 export function renderSummary(s: CheckpointSummary, t: Theme = PLAIN): string {
@@ -115,12 +124,16 @@ export function renderSummary(s: CheckpointSummary, t: Theme = PLAIN): string {
 
   const out = ['', box(t, `${t.sym.bullet} CHECKPOINT ${s.id}`, lines, 'magenta')];
   for (const w of s.warnings) out.push(`  ${statusIcon(t, 'warn')} ${t.fg('amber', w)}`);
-  out.push(
-    '',
-    `  ${t.fg('cyan', t.sym.arrow)} ${t.dim('review')}  ${t.bold(displayPath(s.handoff.file))}`,
-    `  ${t.fg('cyan', t.sym.arrow)} ${t.dim('relay ')}  paste it into ${s.targetProvider ? providerName(t, s.targetProvider) : 'the next agent'} ${t.dim('(auto-launch arrives in Phase 3)')}`,
-    '',
-  );
+
+  const panel = s.targetProvider ? `the ${providerName(t, PANEL_NAMES[s.targetProvider] ?? s.targetProvider)} panel` : 'the next agent';
+  const arrow = t.fg('cyan', t.sym.arrow);
+  out.push('', `  ${arrow} ${t.dim('review')}  ${t.bold(displayPath(s.handoff.file))}`);
+  if (s.copied) {
+    out.push(`  ${statusIcon(t, 'ok')} ${t.bold(t.fg('lime', 'copied'))}  paste into ${panel} ${t.dim('(Ctrl+V / Cmd+V)')}`);
+  } else {
+    out.push(`  ${arrow} ${t.dim('relay ')}  paste it into ${panel}, or re-run with ${t.bold('--copy')}`);
+  }
+  out.push(`  ${arrow} ${t.dim('or say')}  ${t.fg('orange', s.pointer)} ${t.dim('(the agent reads the file itself)')}`, '');
   return out.join('\n');
 }
 

@@ -21,7 +21,14 @@ pnpm build
 node apps/cli/dist/bin.js doctor
 ```
 
-To get an `agentrelay` command, run `pnpm --filter @agentrelay/cli link --global` (or just call `pnpm agentrelay <command>`).
+To get a global `agentrelay` command, link the CLI package with npm (works without extra PATH setup):
+
+```sh
+cd apps/cli && npm link
+```
+
+It points at your checkout, so `pnpm build` is enough to pick up changes. Remove it with `npm unlink -g @agentrelay/cli`.
+Without linking, run `pnpm agentrelay <command>` from the repo root.
 
 ## Commands (implemented)
 
@@ -63,6 +70,19 @@ redacted before anything is stored, and `.env`/key files are never captured. The
 `.agentrelay/handoffs/<id>.md` so you can review and edit it.
 
 Global flags: `--json` (machine-readable output), `-C/--cwd <dir>`, `-v/--verbose`, `--no-color`.
+
+### Using the VS Code / Cursor extensions
+
+You do not need a global `claude` or `codex` install. The Claude Code and Codex editor extensions write sessions to
+the same folders (`~/.claude`, `~/.codex`) and ship their own CLI, which `agentrelay doctor` detects in VS Code,
+VS Code Insiders, Cursor, Windsurf, VSCodium and VS Code Server. To hand work to an agent running in an editor panel:
+
+```sh
+agentrelay handoff --from codex --to claude --verify "npm test" --copy
+```
+
+Then paste into the Claude Code panel. Or skip the paste and tell the agent the one-liner the card prints
+(`Continue the task in .agentrelay/handoffs/<id>.md ...`); it reads the file itself.
 
 ### The terminal experience
 
@@ -126,5 +146,5 @@ CI runs build, tests and a CLI smoke test on Windows, macOS and Linux with Node 
 - [x] Phase 1: monorepo, CLI foundation, `init`/`doctor`/`sessions`/`config`, SQLite + migrations, safe subprocess
 - [x] Checkpoint schema v0.1 with provenance rules; redaction pipeline
 - [x] Phase 2: Git diff evidence, transcript digests, `--verify` evidence, `checkpoint create/list/show`, budgeted Markdown handoff, `export`
-- [ ] Phase 3: `handoff --preview/--confirm` launching the target agent via documented CLI input
+- [ ] Phase 3: `handoff --confirm` launching the target agent (global CLI or the copy bundled in an editor extension)
 - [ ] Phase 4: usage capture, benchmark harness, signed releases

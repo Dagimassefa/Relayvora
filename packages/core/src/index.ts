@@ -2,6 +2,7 @@ export * from './adapter.js';
 export * from './build.js';
 export * from './checkpoint.js';
 export * from './discovery.js';
+export * from './editors.js';
 export * from './errors.js';
 export * from './exec.js';
 export * from './handoff.js';

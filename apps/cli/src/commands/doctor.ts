@@ -113,11 +113,20 @@ export async function runDoctor(ctx: CliContext): Promise<DoctorReport> {
             capabilities: adapter.capabilities,
           });
 
-          const sessions = existing.length > 0 ? `sessions dir ${existing.join(', ')}` : 'no sessions dir found';
+          const sessions = existing.length > 0 ? 'sessions found' : 'no sessions yet';
           const detail = { probe, sessionRoots: roots, capabilities: adapter.capabilities };
-          if (!probe.found) return { status: 'warn', message: `${adapter.displayName} not installed; ${sessions}`, detail };
-          if (probe.error) return { status: 'warn', message: `${adapter.displayName}: ${probe.error}; ${sessions}`, detail };
-          return { status: 'ok', message: `${adapter.displayName} ${probe.version ?? '(unknown version)'}; ${sessions}`, detail };
+          if (!probe.found) {
+            const message =
+              existing.length > 0
+                ? `${adapter.displayName}: sessions readable, but no \`${adapter.executable}\` on PATH or in an editor extension`
+                : `${adapter.displayName} not found: no \`${adapter.executable}\` on PATH, no editor extension, no sessions`;
+            return { status: 'warn', message, detail };
+          }
+          const where = probe.source === 'editor-extension' ? `${probe.editor} extension` : 'on PATH';
+          if (probe.error) return { status: 'warn', message: `${adapter.displayName} (${where}): ${probe.error}`, detail };
+          // Strip a trailing product name some CLIs print, e.g. "2.1.295 (Claude Code)".
+          const version = (probe.version ?? 'unknown version').replace(/\s*\([^)]*\)\s*$/, '');
+          return { status: 'ok', message: `${adapter.displayName} ${version} · ${where} · ${sessions}`, detail };
         }),
       );
     }

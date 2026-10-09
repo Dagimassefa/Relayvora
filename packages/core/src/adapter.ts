@@ -45,6 +45,10 @@ export interface ExecutableProbe {
   path?: string;
   version?: string;
   error?: string;
+  /** Where the executable was found: a global install on PATH, or bundled in an editor extension. */
+  source?: 'path' | 'editor-extension';
+  /** Editor whose extension bundles it, e.g. "VS Code" or "Cursor". */
+  editor?: string;
 }
 
 export interface DiscoverOptions {

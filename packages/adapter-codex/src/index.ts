@@ -4,6 +4,8 @@ import path from 'node:path';
 import {
   directoryExists,
   finalizeSessions,
+  platformBinaryCandidates,
+  type BundledBinarySpec,
   pickString,
   probeExecutable,
   readJsonlHead,
@@ -58,6 +60,12 @@ export async function readCodexSession(file: string): Promise<{ session: Session
   };
 }
 
+/** The Codex IDE extension (`openai.chatgpt`) ships the CLI under `bin/<platform-arch>/`. */
+export const CODEX_BUNDLED: BundledBinarySpec = {
+  extensionPrefix: 'openai.chatgpt-',
+  candidates: (dir, platform, arch) => platformBinaryCandidates(dir, 'bin', 'codex', platform, arch),
+};
+
 export const codexAdapter: AgentAdapter = {
   id: 'codex',
   displayName: 'OpenAI Codex CLI',
@@ -70,7 +78,7 @@ export const codexAdapter: AgentAdapter = {
   },
 
   probe(options?: ProbeOptions) {
-    return probeExecutable('codex', options);
+    return probeExecutable('codex', options, CODEX_BUNDLED);
   },
 
   readTranscript(sessionPath: string) {
