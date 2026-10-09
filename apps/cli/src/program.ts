@@ -12,16 +12,30 @@ import {
 import { renderConfig, runConfigShow } from './commands/config.js';
 import { renderDoctor, runDoctor } from './commands/doctor.js';
 import { type ExportOptions, runExport } from './commands/export.js';
+import { renderHome, runHome } from './commands/home.js';
 import { renderInit, runInit } from './commands/init.js';
 import { renderSessions, runSessions } from './commands/sessions.js';
 import { createContext } from './context.js';
 import { emit } from './output.js';
+import { banner, statusIcon } from './ui/components.js';
+import { highlightMarkdown } from './ui/markdown.js';
+import { terminalProgress } from './ui/progress.js';
+import { PLAIN, createTheme, type Theme } from './ui/theme.js';
 
 interface GlobalOptions {
   json?: boolean;
   cwd?: string;
   verbose?: boolean;
+  color?: boolean;
 }
+
+/** Themes for each output stream; either can be a terminal while the other is piped. */
+export interface Ui {
+  out: Theme;
+  err: Theme;
+}
+
+const PLAIN_UI: Ui = { out: PLAIN, err: PLAIN };
 
 function parsePositiveInt(value: string): number {
   const n = Number.parseInt(value, 10);
@@ -66,7 +80,7 @@ interface CheckpointFlags {
   transcript: boolean;
 }
 
-function toCreateOptions(flags: CheckpointFlags, opts: GlobalOptions): CreateCheckpointOptions {
+function toCreateOptions(flags: CheckpointFlags, opts: GlobalOptions, ui: Ui): CreateCheckpointOptions {
   const o: CreateCheckpointOptions = {
     constraints: flags.constraint ?? [],
     completed: flags.done ?? [],
@@ -82,11 +96,22 @@ function toCreateOptions(flags: CheckpointFlags, opts: GlobalOptions): CreateChe
   if (flags.to) o.to = flags.to;
   if (flags.goal) o.goal = flags.goal;
   if (flags.budget !== undefined) o.budget = flags.budget;
-  if (!opts.json) o.log = (m) => process.stderr.write(`${m}\n`);
+  if (!opts.json) o.progress = terminalProgress(ui.err, process.stderr);
   return o;
 }
 
-export function buildProgram(): Command {
+function styleHelp(program: Command, t: Theme): void {
+  program.configureHelp({
+    styleTitle: (s) => t.bold(t.fg('violet', s)),
+    styleCommandText: (s) => t.bold(t.fg('cyan', s)),
+    styleSubcommandText: (s) => t.fg('cyan', s),
+    styleOptionText: (s) => t.fg('magenta', s),
+    styleArgumentText: (s) => t.fg('amber', s),
+    styleDescriptionText: (s) => t.dim(s),
+  });
+}
+
+export function buildProgram(ui: Ui = PLAIN_UI): Command {
   const program = new Command()
     .name('agentrelay')
     .description('Move unfinished work between AI coding agents with compact, evidence-backed checkpoints.')
@@ -94,20 +119,29 @@ export function buildProgram(): Command {
     .option('--json', 'machine-readable JSON output')
     .option('-C, --cwd <dir>', 'run as if started in <dir>')
     .option('-v, --verbose', 'show extra detail and warnings')
+    .option('--no-color', 'plain output without colours (also: NO_COLOR=1)')
     .showHelpAfterError()
     .exitOverride();
+  styleHelp(program, ui.out);
+  program.addHelpText('beforeAll', () => (ui.out.level > 0 ? banner(ui.out, AGENTRELAY_VERSION) : ''));
 
   const ctxFor = (cmd: Command) => {
     const opts = cmd.optsWithGlobals<GlobalOptions>();
     return { opts, ctx: createContext(opts.cwd ? { cwd: opts.cwd } : {}) };
   };
 
+  // Bare `agentrelay`: the home screen.
+  program.action(async (_options, cmd: Command) => {
+    const { opts, ctx } = ctxFor(cmd);
+    emit(opts, await runHome(ctx), (h) => renderHome(h, ui.out));
+  });
+
   program
     .command('init')
     .description('register the current project and create .agentrelay/ (ignored by Git)')
     .action(async (_options, cmd: Command) => {
       const { opts, ctx } = ctxFor(cmd);
-      emit(opts, await runInit(ctx), renderInit);
+      emit(opts, await runInit(ctx), (r) => renderInit(r, ui.out));
     });
 
   program
@@ -116,7 +150,7 @@ export function buildProgram(): Command {
     .action(async (_options, cmd: Command) => {
       const { opts, ctx } = ctxFor(cmd);
       const report = await runDoctor(ctx);
-      emit(opts, report, renderDoctor);
+      emit(opts, report, (r) => renderDoctor(r, ui.out));
       if (!report.ok) process.exitCode = ExitCode.PreconditionFailed;
     });
 
@@ -129,7 +163,7 @@ export function buildProgram(): Command {
     .action(async (options: { provider?: string; all?: boolean; limit: number }, cmd: Command) => {
       const { opts, ctx } = ctxFor(cmd);
       const result = await runSessions(ctx, options);
-      emit(opts, result, (r) => renderSessions(r, opts.verbose));
+      emit(opts, result, (r) => renderSessions(r, opts.verbose, ui.out));
     });
 
   const checkpoint = program.command('checkpoint').description('create and inspect checkpoints');
@@ -141,8 +175,8 @@ export function buildProgram(): Command {
       .option('--to <provider>', 'provider that will receive the handoff'),
   ).action(async (flags: CheckpointFlags, cmd: Command) => {
     const { opts, ctx } = ctxFor(cmd);
-    const result = await createCheckpoint(ctx, toCreateOptions(flags, opts));
-    emit(opts, summarize(result), renderSummary);
+    const result = await createCheckpoint(ctx, toCreateOptions(flags, opts, ui));
+    emit(opts, summarize(result), (s) => renderSummary(s, ui.out));
   });
 
   checkpoint
@@ -151,7 +185,7 @@ export function buildProgram(): Command {
     .option('-n, --limit <n>', 'max checkpoints', parsePositiveInt, 20)
     .action(async (options: { limit: number }, cmd: Command) => {
       const { opts, ctx } = ctxFor(cmd);
-      emit(opts, await runCheckpointList(ctx, options.limit), renderCheckpointList);
+      emit(opts, await runCheckpointList(ctx, options.limit), (r) => renderCheckpointList(r, ui.out));
     });
 
   checkpoint
@@ -163,7 +197,7 @@ export function buildProgram(): Command {
       const { opts, ctx } = ctxFor(cmd);
       const { checkpoint: cp, markdown } = await runCheckpointShow(ctx, id, options);
       if (opts.json || options.format === 'json') process.stdout.write(`${JSON.stringify(cp, null, 2)}\n`);
-      else process.stdout.write(markdown);
+      else process.stdout.write(highlightMarkdown(markdown, ui.out));
     });
 
   program
@@ -180,7 +214,10 @@ export function buildProgram(): Command {
         const { content, ...meta } = result;
         emit(opts, result.out ? meta : result, () => '');
       } else if (result.out) {
-        process.stderr.write(`Wrote ${result.bytes} bytes (~${result.estimatedTokens} tokens) to ${result.out}\n`);
+        const t = ui.err;
+        process.stderr.write(
+          `  ${statusIcon(t, 'ok')} Exported ${t.bold(result.checkpointId)} ${t.dim(`(${result.format}, ~${result.estimatedTokens} tok)`)} ${t.fg('cyan', t.sym.arrow)} ${t.bold(result.out)}\n`,
+        );
       } else {
         process.stdout.write(result.content);
       }
@@ -201,12 +238,13 @@ export function buildProgram(): Command {
         ExitCode.Unsupported,
       );
     }
-    const result = await createCheckpoint(ctx, toCreateOptions(flags, opts));
+    const result = await createCheckpoint(ctx, toCreateOptions(flags, opts, ui));
     if (opts.json) {
       emit(opts, { ...summarize(result), markdown: result.checkpoint.handoff.prompt }, () => '');
     } else {
-      process.stdout.write(result.checkpoint.handoff.prompt ?? '');
-      process.stderr.write(`\n${renderSummary(summarize(result))}\n`);
+      // The handoff text goes to stdout (pipe-friendly); the card goes to stderr.
+      process.stdout.write(highlightMarkdown(result.checkpoint.handoff.prompt ?? '', ui.out));
+      process.stderr.write(`${renderSummary(summarize(result), ui.err)}\n`);
     }
   });
 
@@ -216,22 +254,31 @@ export function buildProgram(): Command {
     .description('show resolved paths and project configuration')
     .action(async (_options, cmd: Command) => {
       const { opts, ctx } = ctxFor(cmd);
-      emit(opts, await runConfigShow(ctx), renderConfig);
+      emit(opts, await runConfigShow(ctx), (r) => renderConfig(r, ui.out));
     });
 
   return program;
 }
 
-function reportError(message: string, code: ExitCode, json: boolean): ExitCode {
-  if (json) process.stdout.write(`${JSON.stringify({ error: { message, exitCode: code } }, null, 2)}\n`);
-  else process.stderr.write(`agentrelay: ${message}\n`);
+function reportError(message: string, code: ExitCode, json: boolean, t: Theme): ExitCode {
+  if (json) {
+    process.stdout.write(`${JSON.stringify({ error: { message, exitCode: code } }, null, 2)}\n`);
+  } else {
+    const hint = code === ExitCode.Usage ? `\n  ${t.dim('run agentrelay --help for usage')}` : '';
+    process.stderr.write(`\n  ${t.fg('red', t.sym.fail)} ${t.bold(t.fg('red', 'error'))} ${message}${hint}\n\n`);
+  }
   return code;
 }
 
 /** Runs the CLI and returns the process exit code instead of exiting, so it can be tested in-process. */
 export async function main(argv: string[]): Promise<number> {
-  const program = buildProgram();
   const json = argv.includes('--json');
+  const color = !json && !argv.includes('--no-color');
+  const ui: Ui = {
+    out: createTheme(process.stdout, { color }),
+    err: createTheme(process.stderr, { color }),
+  };
+  const program = buildProgram(ui);
   try {
     await program.parseAsync(argv);
     return typeof process.exitCode === 'number' ? process.exitCode : ExitCode.Ok;
@@ -240,12 +287,12 @@ export async function main(argv: string[]): Promise<number> {
       // Help and version are reported as "errors" under exitOverride; commander already printed them.
       return error.exitCode === 0 ? ExitCode.Ok : ExitCode.Usage;
     }
-    if (error instanceof AgentRelayError) return reportError(error.message, error.exitCode, json);
+    if (error instanceof AgentRelayError) return reportError(error.message, error.exitCode, json, ui.err);
     if (error instanceof ZodError) {
       const detail = error.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`).join('; ');
-      return reportError(`Invalid data: ${detail}`, ExitCode.Failure, json);
+      return reportError(`Invalid data: ${detail}`, ExitCode.Failure, json, ui.err);
     }
     const message = error instanceof Error ? (process.env.AGENTRELAY_DEBUG ? error.stack ?? error.message : error.message) : String(error);
-    return reportError(message, ExitCode.Failure, json);
+    return reportError(message, ExitCode.Failure, json, ui.err);
   }
 }

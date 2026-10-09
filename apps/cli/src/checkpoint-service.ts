@@ -23,6 +23,7 @@ import { collectGitSnapshot } from '@agentrelay/git';
 import type { Store } from '@agentrelay/storage';
 import { type CliContext, openStore, selectAdapters } from './context.js';
 import { ensureProject, handoffPath } from './project.js';
+import { SILENT_PROGRESS, type Progress } from './ui/progress.js';
 
 export interface CreateCheckpointOptions extends UserTaskInput {
   /** Use the latest session of this provider for the project. */
@@ -37,8 +38,8 @@ export interface CreateCheckpointOptions extends UserTaskInput {
   verifyTimeoutSec?: number;
   /** Set false to skip reading the session transcript. */
   transcript?: boolean;
-  /** Progress messages (stderr in the CLI). */
-  log?: (message: string) => void;
+  /** Reports each step (spinner on stderr in the CLI). */
+  progress?: Progress;
 }
 
 export interface CreateCheckpointResult {
@@ -121,7 +122,7 @@ export async function runVerification(commandLine: string, cwd: string, timeoutS
 }
 
 export async function createCheckpoint(ctx: CliContext, options: CreateCheckpointOptions): Promise<CreateCheckpointResult> {
-  const log = options.log ?? (() => {});
+  const progress = options.progress ?? SILENT_PROGRESS;
   if (options.to) selectAdapters(ctx, options.to); // validate early
   if (options.budget !== undefined && options.budget < 200) {
     throw new AgentRelayError('--budget must be at least 200 tokens', ExitCode.Usage);
@@ -141,8 +142,13 @@ export async function createCheckpoint(ctx: CliContext, options: CreateCheckpoin
     const extraWarnings: string[] = [];
 
     let picked: { adapter: AgentAdapter; session: SessionSummary } | null = null;
-    if (options.session) picked = await findSession(ctx, options.session, options.from);
-    else if (options.from) picked = await latestSession(ctx, options.from, project.root);
+    if (options.session || options.from) {
+      picked = await progress.step(
+        options.session ? `Finding session ${options.session}` : `Finding latest ${options.from} session`,
+        () => (options.session ? findSession(ctx, options.session, options.from) : latestSession(ctx, options.from!, project.root)),
+        (p) => ({ status: 'ok', detail: `${p.adapter.id} ${p.session.id.slice(0, 8)}` }),
+      );
+    }
     const session = picked?.session ?? null;
     if (session?.cwd && !isWithin(project.root, canonicalPath(session.cwd))) {
       extraWarnings.push(`The session was recorded in ${session.cwd}, not in this project (${project.root}).`);
@@ -151,27 +157,51 @@ export async function createCheckpoint(ctx: CliContext, options: CreateCheckpoin
     let transcript: TranscriptDigest | null = null;
     let sessionSha256: string | null = null;
     if (picked && options.transcript !== false) {
-      log(`Reading ${picked.adapter.displayName} session ${picked.session.id}…`);
-      if (!picked.adapter.readTranscript) {
-        extraWarnings.push(`${picked.adapter.displayName} transcripts cannot be read yet.`);
+      const { adapter, session: s } = picked;
+      if (!adapter.readTranscript) {
+        extraWarnings.push(`${adapter.displayName} transcripts cannot be read yet.`);
       } else {
         try {
-          transcript = await picked.adapter.readTranscript(picked.session.path);
-          sessionSha256 = await sha256File(picked.session.path);
+          transcript = await progress.step(
+            'Reading transcript',
+            async () => {
+              const digest = await adapter.readTranscript!(s.path);
+              sessionSha256 = await sha256File(s.path);
+              return digest;
+            },
+            (d) => ({
+              status: d.userPromptCount > 0 ? 'ok' : 'warn',
+              detail: `${d.userPromptCount} prompt(s)${d.title ? ` · "${d.title}"` : ''}`,
+            }),
+          );
         } catch (error) {
           extraWarnings.push(`Could not read session transcript: ${(error as Error).message}`);
         }
       }
     }
 
-    log(project.isGitRepo ? 'Collecting Git evidence…' : 'Not a Git repository; skipping Git evidence.');
-    const git = project.isGitRepo ? await collectGitSnapshot(project.root) : null;
+    const git = project.isGitRepo
+      ? await progress.step(
+          'Collecting Git evidence',
+          () => collectGitSnapshot(project.root),
+          (g) => {
+            const added = g.files.reduce((n, f) => n + (f.linesAdded ?? 0), 0);
+            const deleted = g.files.reduce((n, f) => n + (f.linesDeleted ?? 0), 0);
+            return { status: 'ok', detail: `${g.files.length} file(s) · +${added} -${deleted}` };
+          },
+        )
+      : null;
 
     const verifications: VerificationResult[] = [];
     for (const command of verify) {
-      log(`Running \`${command}\`…`);
-      const result = await runVerification(command, project.root, options.verifyTimeoutSec ?? 600);
-      log(`  → ${result.timedOut ? 'timed out' : result.error ? `could not run: ${result.error}` : `exit ${result.exitCode}`}`);
+      const result = await progress.step(
+        `Running ${command}`,
+        () => runVerification(command, project.root, options.verifyTimeoutSec ?? 600),
+        (r) =>
+          r.exitCode === 0
+            ? { status: 'ok', detail: 'exit 0' }
+            : { status: 'fail', detail: r.timedOut ? 'timed out' : r.error ? `could not run: ${r.error}` : `exit ${r.exitCode}` },
+      );
       verifications.push(result);
     }
 

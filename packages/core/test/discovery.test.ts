@@ -15,16 +15,14 @@ function session(id: string, cwd: string | null): SessionSummary {
 
 /** The 8.3 short form of a Windows path, or null when the volume does not generate short names. */
 function shortName(p: string): string | null {
-  try {
-    const out = execFileSync(
-      'powershell.exe',
-      ['-NoProfile', '-Command', `(New-Object -ComObject Scripting.FileSystemObject).GetFolder($args[0]).ShortPath`, p],
-      { encoding: 'utf8' },
-    ).trim();
-    return out && out !== p ? out : null;
-  } catch {
-    return null;
-  }
+  // Single-quoted PowerShell literal: only ' needs escaping (as '').
+  const literal = `'${p.replace(/'/g, "''")}'`;
+  const out = execFileSync(
+    'powershell.exe',
+    ['-NoProfile', '-NonInteractive', '-Command', `(New-Object -ComObject Scripting.FileSystemObject).GetFolder(${literal}).ShortPath`],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+  ).trim();
+  return out && out !== p ? out : null;
 }
 
 describe('canonicalPath', () => {

@@ -46,6 +46,34 @@ export interface CheckpointRow {
   createdAt: string;
 }
 
+export interface ActivityStats {
+  checkpoints: number;
+  projects: number;
+  /** Estimated tokens of context listed as deferred instead of inlined, summed over checkpoints. */
+  deferredTokens: number;
+  verifiedRuns: number;
+  passedRuns: number;
+  /** Distinct UTC days with at least one checkpoint, newest first. */
+  activeDays: string[];
+  /** Consecutive UTC days with a checkpoint, ending today or yesterday. */
+  streakDays: number;
+}
+
+/** Counts consecutive days (YYYY-MM-DD, newest first) ending today or yesterday. */
+export function streak(daysDesc: string[], today: Date = new Date()): number {
+  const dayMs = 86_400_000;
+  const toNum = (d: string) => Math.round(Date.parse(`${d}T00:00:00Z`) / dayMs);
+  const todayNum = Math.floor(today.getTime() / dayMs);
+  const first = daysDesc[0];
+  if (!first || todayNum - toNum(first) > 1) return 0;
+  let count = 1;
+  for (let i = 1; i < daysDesc.length; i++) {
+    if (toNum(daysDesc[i - 1]!) - toNum(daysDesc[i]!) !== 1) break;
+    count++;
+  }
+  return count;
+}
+
 const now = () => new Date().toISOString();
 
 /**
@@ -251,6 +279,34 @@ export class Store {
          FROM checkpoints WHERE project_id = ? ORDER BY created_at DESC LIMIT ?`,
       )
       .all(projectId, limit) as unknown as CheckpointRow[];
+  }
+
+  /** Aggregate activity, from stored records only. Optionally scoped to one project. */
+  activityStats(projectId?: string): ActivityStats {
+    const where = projectId ? 'WHERE c.project_id = ?' : '';
+    const args = projectId ? [projectId] : [];
+    const totals = this.db
+      .prepare(
+        `SELECT COUNT(*) AS checkpoints,
+                COUNT(DISTINCT c.project_id) AS projects,
+                COALESCE(SUM((SELECT SUM(json_extract(d.value, '$.estimatedTokens'))
+                              FROM json_each(c.body_json, '$.handoff.deferred') d)), 0) AS deferredTokens
+         FROM checkpoints c ${where}`,
+      )
+      .get(...args) as { checkpoints: number; projects: number; deferredTokens: number };
+    const runs = this.db
+      .prepare(
+        `SELECT COUNT(*) AS verifiedRuns, COALESCE(SUM(e.status = 'passed'), 0) AS passedRuns
+         FROM evidence e JOIN checkpoints c ON c.id = e.checkpoint_id
+         ${where ? `${where} AND` : 'WHERE'} e.type IN ('command', 'test')`,
+      )
+      .get(...args) as { verifiedRuns: number; passedRuns: number };
+    const days = (
+      this.db.prepare(`SELECT DISTINCT substr(c.created_at, 1, 10) AS day FROM checkpoints c ${where} ORDER BY day DESC`).all(...args) as Array<{
+        day: string;
+      }>
+    ).map((r) => r.day);
+    return { ...totals, ...runs, activeDays: days, streakDays: streak(days) };
   }
 
   saveAdapterCapabilities(record: AdapterCapabilityRecord): void {

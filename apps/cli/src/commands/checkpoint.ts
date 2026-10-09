@@ -1,11 +1,11 @@
+import path from 'node:path';
 import { AgentRelayError, ExitCode, renderHandoff, type Checkpoint } from '@agentrelay/core';
 import type { CheckpointRow } from '@agentrelay/storage';
 import { type CreateCheckpointResult, loadCheckpoint } from '../checkpoint-service.js';
 import { type CliContext, openStore } from '../context.js';
-import { table } from '../output.js';
 import { locateProject } from '../project.js';
-
-const n = (v: number | null | undefined) => (v === null || v === undefined ? '?' : v.toLocaleString('en-US'));
+import { box, compact, label, meter, num, providerChip, providerName, relativeTime, shortId, statusIcon, table } from '../ui/components.js';
+import { PLAIN, type Theme } from '../ui/theme.js';
 
 export interface CheckpointSummary {
   id: string;
@@ -15,7 +15,8 @@ export interface CheckpointSummary {
   goal: string;
   goalProvenance: string;
   evidence: { total: number; failingCommands: number; passingCommands: number };
-  handoff: { file: string; estimatedTokens: number | null; budgetTokens: number | null; deferred: number };
+  files: { changed: number; linesAdded: number; linesDeleted: number };
+  handoff: { file: string; estimatedTokens: number | null; budgetTokens: number | null; deferred: number; deferredTokens: number };
   usage: Checkpoint['usage'];
   warnings: string[];
 }
@@ -23,6 +24,7 @@ export interface CheckpointSummary {
 export function summarize(result: CreateCheckpointResult): CheckpointSummary {
   const cp = result.checkpoint;
   const commands = cp.evidence.filter((e) => e.type === 'command' || e.type === 'test');
+  const files = cp.evidence.filter((e) => e.type === 'git-diff' || e.type === 'file');
   return {
     id: cp.id,
     createdAt: cp.createdAt,
@@ -35,40 +37,91 @@ export function summarize(result: CreateCheckpointResult): CheckpointSummary {
       failingCommands: commands.filter((e) => e.status !== 'passed').length,
       passingCommands: commands.filter((e) => e.status === 'passed').length,
     },
+    files: {
+      changed: cp.project.dirtyFiles.length,
+      linesAdded: files.reduce((n, e) => n + (e.linesAdded ?? 0), 0),
+      linesDeleted: files.reduce((n, e) => n + (e.linesDeleted ?? 0), 0),
+    },
     handoff: {
       file: result.handoffFile,
       estimatedTokens: cp.handoff.estimatedTokens,
       budgetTokens: cp.handoff.budgetTokens,
       deferred: cp.handoff.deferred.length,
+      deferredTokens: cp.handoff.deferred.reduce((n, d) => n + d.estimatedTokens, 0),
     },
     usage: cp.usage,
     warnings: cp.warnings,
   };
 }
 
-export function renderSummary(s: CheckpointSummary): string {
-  const source =
+/** Relative to the current directory when inside it; absolute otherwise. */
+function displayPath(file: string): string {
+  const rel = path.relative(process.cwd(), file);
+  return rel && !rel.startsWith('..') && !path.isAbsolute(rel) ? rel : file;
+}
+
+const PROVENANCE_TAG: Record<string, string> = {
+  'user-provided': 'user',
+  observed: 'observed',
+  inferred: 'inferred',
+  'agent-reported': 'agent-reported',
+};
+
+/** The "mission card" printed after a checkpoint is captured. */
+export function renderSummary(s: CheckpointSummary, t: Theme = PLAIN): string {
+  const sep = t.fg('gray', ` ${t.sym.dot} `);
+  const from =
     s.source.provider === 'manual'
-      ? 'repository + user input (no session)'
-      : `${s.source.provider} session ${s.source.sessionId}${s.source.title ? ` ("${s.source.title}")` : ''}`;
+      ? `${providerChip(t, 'manual')} ${t.dim('repository + your input')}`
+      : `${providerChip(t, s.source.provider)} ${t.bold(shortId(s.source.sessionId ?? '?'))}${s.source.title ? ` ${t.dim(`"${s.source.title}"`)}` : ''}`;
+  const to = s.targetProvider ? providerChip(t, s.targetProvider) : t.dim('any agent');
   const goal = s.goal.split('\n')[0]!;
+  const tag = PROVENANCE_TAG[s.goalProvenance] ?? s.goalProvenance;
+  const tagColor = s.goalProvenance === 'inferred' || s.goalProvenance === 'agent-reported' ? 'amber' : 'lime';
+
+  const tests =
+    s.evidence.passingCommands + s.evidence.failingCommands === 0
+      ? `${statusIcon(t, 'warn')} ${t.fg('amber', 'not verified')} ${t.dim('(add --verify "<cmd>")')}`
+      : [
+          s.evidence.passingCommands ? `${statusIcon(t, 'ok')} ${t.fg('lime', `${s.evidence.passingCommands} passed`)}` : '',
+          s.evidence.failingCommands ? `${statusIcon(t, 'fail')} ${t.fg('red', `${s.evidence.failingCommands} failing`)}` : '',
+        ]
+          .filter(Boolean)
+          .join('   ');
+
+  const used = s.handoff.estimatedTokens ?? 0;
+  const budget = s.handoff.budgetTokens ?? 0;
+  const pct = budget ? Math.round((used / budget) * 100) : 0;
   const lines = [
-    `Checkpoint ${s.id}`,
-    `  source:    ${source}`,
-    `  goal:      ${goal.length > 90 ? `${goal.slice(0, 89)}…` : goal} [${s.goalProvenance}]`,
-    `  evidence:  ${s.evidence.total} item(s); commands: ${s.evidence.passingCommands} passed, ${s.evidence.failingCommands} failed/unknown`,
-    `  handoff:   ~${n(s.handoff.estimatedTokens)} tokens (estimated; budget ${n(s.handoff.budgetTokens)})${
-      s.handoff.deferred ? `, ${s.handoff.deferred} item(s) deferred` : ''
-    }${s.targetProvider ? ` → ${s.targetProvider}` : ''}`,
-    `  preview:   ${s.handoff.file}`,
+    `${label(t, 'FROM')}${from}`,
+    `${label(t, 'TO')}${to}`,
+    `${label(t, 'GOAL')}${t.bold(goal)} ${t.fg(tagColor, `[${tag}]`)}`,
+    '',
+    `${label(t, 'TESTS')}${tests}`,
+    `${label(t, 'FILES')}${t.bold(String(s.files.changed))} changed${sep}${t.fg('lime', `+${num(s.files.linesAdded)}`)} ${t.fg('red', `-${num(s.files.linesDeleted)}`)}`,
+    `${label(t, 'BUDGET')}${meter(t, used, budget, 22)}  ${t.bold(num(used))}${t.dim(`/${num(budget)} tok`)}  ${t.fg('gray', `${pct}%`)}`,
   ];
-  if (s.usage.source !== 'unavailable') {
-    const cost = s.usage.costUsd !== null ? `, ~$${s.usage.costUsd.toFixed(2)}` : '';
-    lines.push(`  session usage so far (${s.usage.source}): ${n(s.usage.inputTokens)} in / ${n(s.usage.outputTokens)} out${cost}`);
+  if (s.handoff.deferred > 0) {
+    lines.push(
+      `${label(t, 'DEFER')}${t.bold(String(s.handoff.deferred))} item(s)${sep}${t.fg('cyan', `~${compact(s.handoff.deferredTokens)} tok`)} ${t.dim('kept out, fetch on demand')}`,
+    );
   }
-  if (s.warnings.length > 0) lines.push('', 'Warnings:', ...s.warnings.map((w) => `  - ${w}`));
-  lines.push('', 'Review (and edit, if needed) the preview file before handing it to another agent.');
-  return lines.join('\n');
+  if (s.usage.source !== 'unavailable') {
+    const cost = s.usage.costUsd !== null ? `${sep}~$${s.usage.costUsd.toFixed(2)}` : '';
+    lines.push(
+      `${label(t, 'USAGE')}${compact(s.usage.inputTokens ?? 0)} in${sep}${compact(s.usage.outputTokens ?? 0)} out${cost} ${t.dim('(session so far)')}`,
+    );
+  }
+
+  const out = ['', box(t, `${t.sym.bullet} CHECKPOINT ${s.id}`, lines, 'magenta')];
+  for (const w of s.warnings) out.push(`  ${statusIcon(t, 'warn')} ${t.fg('amber', w)}`);
+  out.push(
+    '',
+    `  ${t.fg('cyan', t.sym.arrow)} ${t.dim('review')}  ${t.bold(displayPath(s.handoff.file))}`,
+    `  ${t.fg('cyan', t.sym.arrow)} ${t.dim('relay ')}  paste it into ${s.targetProvider ? providerName(t, s.targetProvider) : 'the next agent'} ${t.dim('(auto-launch arrives in Phase 3)')}`,
+    '',
+  );
+  return out.join('\n');
 }
 
 export interface ShowOptions {
@@ -100,15 +153,14 @@ export async function runCheckpointList(ctx: CliContext, limit: number): Promise
   }
 }
 
-export function renderCheckpointList(r: { projectRoot: string; checkpoints: CheckpointRow[] }): string {
-  if (r.checkpoints.length === 0) return `No checkpoints for ${r.projectRoot}.`;
+export function renderCheckpointList(r: { projectRoot: string; checkpoints: CheckpointRow[] }, t: Theme = PLAIN): string {
+  if (r.checkpoints.length === 0) return `\n  ${statusIcon(t, 'info')} No checkpoints for ${r.projectRoot} yet.\n`;
   const rows = r.checkpoints.map((c) => [
-    c.id,
-    c.createdAt.replace('T', ' ').slice(0, 16),
-    c.sourceProvider,
-    c.targetProvider ?? '-',
-    c.estimatedTokens === null ? '?' : `~${c.estimatedTokens}`,
-    (c.goal ?? '').length > 60 ? `${c.goal!.slice(0, 59)}…` : (c.goal ?? ''),
+    t.bold(c.id),
+    t.fg('blue', relativeTime(c.createdAt)),
+    `${providerChip(t, c.sourceProvider)} ${t.fg('gray', t.sym.arrow)} ${c.targetProvider ? providerChip(t, c.targetProvider) : t.dim('any')}`,
+    c.estimatedTokens === null ? '?' : t.fg('cyan', `~${compact(c.estimatedTokens)}`),
+    c.goal ?? '',
   ]);
-  return table(['CHECKPOINT', 'CREATED (UTC)', 'FROM', 'TO', 'TOKENS', 'GOAL'], rows);
+  return ['', table(t, ['CHECKPOINT', 'WHEN', 'RELAY', 'TOKENS', 'GOAL'], rows), ''].join('\n');
 }

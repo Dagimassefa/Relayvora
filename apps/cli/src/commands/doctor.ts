@@ -10,6 +10,8 @@ import { gitVersion } from '@agentrelay/git';
 import { LATEST_SCHEMA_VERSION } from '@agentrelay/storage';
 import { type CliContext, openStore } from '../context.js';
 import { locateProject, readProjectConfig } from '../project.js';
+import { rule, statusIcon } from '../ui/components.js';
+import { PLAIN, type Theme } from '../ui/theme.js';
 
 export type CheckStatus = 'ok' | 'warn' | 'fail';
 
@@ -126,11 +128,21 @@ export async function runDoctor(ctx: CliContext): Promise<DoctorReport> {
   return { ok: checks.every((c) => c.status !== 'fail'), platform, checks };
 }
 
-const LABEL: Record<CheckStatus, string> = { ok: '[ok]  ', warn: '[warn]', fail: '[FAIL]' };
-
-export function renderDoctor(report: DoctorReport): string {
+export function renderDoctor(report: DoctorReport, t: Theme = PLAIN): string {
   const width = Math.max(...report.checks.map((c) => c.id.length));
-  const lines = report.checks.map((c) => `${LABEL[c.status]} ${c.id.padEnd(width)}  ${c.message}`);
-  lines.push('', report.ok ? 'No blocking problems found.' : 'Blocking problems found; see [FAIL] lines above.');
+  const tint = (c: Check) => (c.status === 'fail' ? t.fg('red', c.message) : c.status === 'warn' ? t.fg('amber', c.message) : c.message);
+  const count = (s: CheckStatus) => report.checks.filter((c) => c.status === s).length;
+  const lines = [
+    '',
+    '  ' + rule(t, 'SYSTEM CHECK', 'cyan', Math.min(t.width, 78) - 2),
+    '',
+    ...report.checks.map((c) => `  ${statusIcon(t, c.status)} ${t.bold(c.id.padEnd(width))}  ${tint(c)}`),
+    '',
+    `  ${t.fg('lime', `${count('ok')}/${report.checks.length} online`)}  ${t.fg('gray', t.sym.dot)}  ${t.fg(count('warn') ? 'amber' : 'gray', `${count('warn')} warning(s)`)}  ${t.fg('gray', t.sym.dot)}  ${t.fg(count('fail') ? 'red' : 'gray', `${count('fail')} critical`)}`,
+    report.ok
+      ? `  ${t.bold(t.fg('lime', `${t.sym.ok} Ready to relay.`))}`
+      : `  ${t.bold(t.fg('red', `${t.sym.fail} Blocking problems found; fix the lines marked ${t.sym.fail} above.`))}`,
+    '',
+  ];
   return lines.join('\n');
 }

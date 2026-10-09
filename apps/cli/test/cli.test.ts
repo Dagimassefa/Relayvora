@@ -106,3 +106,25 @@ describe('main', () => {
     expect((await run('--help')).code).toBe(0);
   });
 });
+
+describe('home screen', () => {
+  it('renders project, sessions and stats without writing anything', async () => {
+    const { runHome, renderHome } = await import('../src/commands/home.js');
+    const before = fs.readdirSync(project);
+    const home = await runHome(ctx());
+    expect(home.project).toMatchObject({ initialized: false, git: { head: null, changedFiles: 0 } });
+    expect(home.stats.global.checkpoints).toBe(0);
+    const text = renderHome(home);
+    expect(text).toContain('QUICK MOVES');
+    expect(text).toContain('agentrelay init');
+    expect(fs.readdirSync(project)).toEqual(before);
+  });
+
+  it('bare `agentrelay` exits 0 and unknown commands are usage errors', async () => {
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    process.env.AGENTRELAY_HOME = env.AGENTRELAY_HOME;
+    expect(await main(['node', 'agentrelay', '--cwd', project])).toBe(0);
+    expect(await main(['node', 'agentrelay', '--cwd', project, 'bogus'])).toBe(2);
+  });
+});

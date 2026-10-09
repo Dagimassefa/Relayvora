@@ -62,7 +62,19 @@ to fetch it. Every fact is labelled `[observed]`, `[user]`, `[agent-reported]` o
 redacted before anything is stored, and `.env`/key files are never captured. The preview is written to
 `.agentrelay/handoffs/<id>.md` so you can review and edit it.
 
-Global flags: `--json` (machine-readable output), `-C/--cwd <dir>`, `-v/--verbose`.
+Global flags: `--json` (machine-readable output), `-C/--cwd <dir>`, `-v/--verbose`, `--no-color`.
+
+### The terminal experience
+
+Run `agentrelay` with no arguments for the home screen: project status, sessions, your last relay, relay stats
+(checkpoints, verified runs, day streak, context kept out of prompts) and the next commands to run. Checkpoints
+show live progress and finish with a summary card that includes a token budget meter. Handoff previews are
+syntax-highlighted in the terminal.
+
+Colour adapts to the terminal (truecolor, 256, 16 or none). Output is plain text whenever it is piped or redirected,
+with `--json`, with `--no-color`, or when `NO_COLOR` is set; `FORCE_COLOR=1..3` forces it on. Set
+`AGENTRELAY_ASCII=1` for terminals without Unicode block characters. Progress and summary cards go to stderr, so
+`agentrelay handoff ... > handoff.md` captures only the Markdown.
 
 ### Exit codes
 
