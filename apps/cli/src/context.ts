@@ -1,7 +1,6 @@
-import path from 'node:path';
 import { claudeAdapter } from '@agentrelay/adapter-claude';
 import { codexAdapter } from '@agentrelay/adapter-codex';
-import { AgentRelayError, ExitCode, dataDir, type AgentAdapter } from '@agentrelay/core';
+import { AgentRelayError, ExitCode, canonicalPath, dataDir, type AgentAdapter } from '@agentrelay/core';
 import { Store } from '@agentrelay/storage';
 
 export interface CliContext {
@@ -16,7 +15,7 @@ export const BUILTIN_ADAPTERS: readonly AgentAdapter[] = [claudeAdapter, codexAd
 export function createContext(overrides: Partial<CliContext> = {}): CliContext {
   const env = overrides.env ?? process.env;
   return {
-    cwd: path.resolve(overrides.cwd ?? process.cwd()),
+    cwd: canonicalPath(overrides.cwd ?? process.cwd()),
     env,
     dataDir: overrides.dataDir ?? dataDir(env),
     adapters: overrides.adapters ?? BUILTIN_ADAPTERS,

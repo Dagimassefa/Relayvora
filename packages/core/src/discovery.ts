@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { DiscoverOptions, SessionSummary } from './adapter.js';
-import { isWithin } from './platform.js';
+import { canonicalPath, isWithin } from './platform.js';
 
 /**
  * Recursively collects files under `root` matching `predicate`, bounded in depth and count so a
@@ -42,9 +42,14 @@ export async function directoryExists(dir: string): Promise<boolean> {
 
 /** Applies the shared project filter, newest-first ordering and limit. */
 export function finalizeSessions(sessions: SessionSummary[], options: DiscoverOptions): SessionSummary[] {
-  const filtered = options.projectRoot
-    ? sessions.filter((s) => s.cwd !== null && isWithin(options.projectRoot!, s.cwd))
-    : sessions;
+  let filtered = sessions;
+  if (options.projectRoot) {
+    // Sessions may record the same directory in another form (8.3 name, other case, via a symlink).
+    const root = canonicalPath(options.projectRoot);
+    const cache = new Map<string, string>();
+    const canonical = (p: string) => cache.get(p) ?? (cache.set(p, canonicalPath(p)), cache.get(p)!);
+    filtered = sessions.filter((s) => s.cwd !== null && isWithin(root, canonical(s.cwd)));
+  }
   filtered.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   return options.limit === undefined ? filtered : filtered.slice(0, options.limit);
 }

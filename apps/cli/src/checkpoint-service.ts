@@ -4,6 +4,7 @@ import {
   AgentRelayError,
   ExitCode,
   buildCheckpoint,
+  canonicalPath,
   isWithin,
   newCheckpointId,
   parseCommandLine,
@@ -143,7 +144,7 @@ export async function createCheckpoint(ctx: CliContext, options: CreateCheckpoin
     if (options.session) picked = await findSession(ctx, options.session, options.from);
     else if (options.from) picked = await latestSession(ctx, options.from, project.root);
     const session = picked?.session ?? null;
-    if (session?.cwd && !isWithin(project.root, session.cwd)) {
+    if (session?.cwd && !isWithin(project.root, canonicalPath(session.cwd))) {
       extraWarnings.push(`The session was recorded in ${session.cwd}, not in this project (${project.root}).`);
     }
 

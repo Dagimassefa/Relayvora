@@ -12,7 +12,7 @@ async function sh(cwd: string, ...args: string[]) {
 
 async function newRepo(): Promise<string> {
   // Spaces and non-ASCII characters on purpose: both break naive quoting.
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ar repo ñ-')));
+  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'ar repo ñ-')));
   await sh(dir, 'init', '-q', '-b', 'main');
   return dir;
 }

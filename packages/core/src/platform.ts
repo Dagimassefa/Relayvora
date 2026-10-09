@@ -75,6 +75,28 @@ export function dataDir(
   }
 }
 
+/**
+ * Resolves a path to its true on-disk form: symlinks followed, true case, and on Windows 8.3 short
+ * names (`C:\PROGRA~1`) expanded. Agents, Git and the shell can each report the same directory in a
+ * different form, so compare canonical paths. For a path that no longer exists, the deepest existing
+ * ancestor is canonicalized and the rest is appended unchanged.
+ */
+export function canonicalPath(p: string): string {
+  const resolved = path.resolve(p);
+  const rest: string[] = [];
+  let current = resolved;
+  for (;;) {
+    try {
+      return path.join(fs.realpathSync.native(current), ...rest.reverse());
+    } catch {
+      const parent = path.dirname(current);
+      if (parent === current) return resolved;
+      rest.push(path.basename(current));
+      current = parent;
+    }
+  }
+}
+
 /** Windows and default macOS volumes are case-insensitive; compare accordingly but never rewrite the original case. */
 function comparable(p: string, platform: NodeJS.Platform): string {
   const resolved = pathApi(platform).resolve(p);

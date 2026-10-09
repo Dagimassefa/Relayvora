@@ -14,7 +14,7 @@ let project: string;
 let env: NodeJS.ProcessEnv;
 
 beforeEach(async () => {
-  home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ar cli ✓-')));
+  home = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'ar cli ✓-')));
   project = path.join(home, 'my project');
   fs.mkdirSync(project);
   await runCommand('git', ['init', '-q', project]);

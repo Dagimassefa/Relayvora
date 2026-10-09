@@ -19,7 +19,7 @@ const git = async (...args: string[]) => {
 };
 
 beforeEach(async () => {
-  home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ar cp ✓-')));
+  home = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'ar cp ✓-')));
   project = path.join(home, 'my project');
   fs.mkdirSync(path.join(project, 'src'), { recursive: true });
   await git('init', '-q', '-b', 'main');

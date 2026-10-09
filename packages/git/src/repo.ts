@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { AgentRelayError, ExitCode, runCommand, type ExecResult } from '@agentrelay/core';
+import { AgentRelayError, ExitCode, canonicalPath, runCommand, type ExecResult } from '@agentrelay/core';
 
 export interface StatusEntry {
   /** Repo-relative path, forward slashes, as Git reports it. */
@@ -42,8 +42,8 @@ export async function gitOk(cwd: string, args: string[], options: { maxOutputByt
 export async function findRepoRoot(cwd: string): Promise<string | null> {
   const result = await git(cwd, ['rev-parse', '--show-toplevel']);
   if (result.exitCode !== 0) return null;
-  // Git prints forward slashes on Windows; normalize to the native form.
-  return path.resolve(result.stdout.trim());
+  // Git prints forward slashes, and possibly another spelling of the same directory than the caller used.
+  return canonicalPath(result.stdout.trim());
 }
 
 function classify(status: string): StatusEntry['kind'] {

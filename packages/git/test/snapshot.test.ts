@@ -11,7 +11,7 @@ async function sh(cwd: string, ...args: string[]) {
 }
 
 async function newRepo(): Promise<string> {
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ar snap ñ-')));
+  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'ar snap ñ-')));
   await sh(dir, 'init', '-q', '-b', 'main');
   await sh(dir, 'config', 'core.autocrlf', 'false');
   return dir;
