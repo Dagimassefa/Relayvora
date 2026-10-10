@@ -122,7 +122,7 @@ export function statusIcon(t: Theme, status: Status): string {
 }
 
 /** Fixed-width label column, e.g. `GOAL   `. */
-export function label(t: Theme, text: string, width = 7): string {
+export function label(t: Theme, text: string, width = 8): string {
   return t.bold(t.fg('violet', text.padEnd(width)));
 }
 

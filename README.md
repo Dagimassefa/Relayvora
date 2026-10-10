@@ -59,6 +59,10 @@ agentrelay handoff --from codex --to claude \
 - `--verify "<cmd>"` (repeatable) runs the command **without a shell** and records its real exit code. This is the
   only way a checkpoint will say something passes. Pipes and redirects are rejected; wrap them in a script.
 - `--budget <tokens>` caps the handoff text (estimated tokens, default from `.agentrelay/config.json`).
+- Work **committed during the session** is included too: your commits since the session started (merges and
+  other authors excluded) are listed as `[observed]` under *Done so far*, with their patches inlined newest-first
+  while they fit. `--commits-since 2h` (or a date) sets the window, which is useful without a session.
+  `--no-commits` turns it off.
 
 ### What a handoff contains
 

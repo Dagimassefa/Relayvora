@@ -24,7 +24,7 @@ export const DirtyFile = z.object({
   origPath: z.string().optional(),
 });
 
-export const EvidenceType = z.enum(['git-status', 'git-diff', 'command', 'test', 'file', 'transcript', 'note']);
+export const EvidenceType = z.enum(['git-status', 'git-diff', 'git-commit', 'command', 'test', 'file', 'transcript', 'note']);
 export type EvidenceType = z.infer<typeof EvidenceType>;
 
 /**
@@ -50,6 +50,15 @@ export const Evidence = z.object({
   linesDeleted: z.number().int().nonnegative().nullable().optional(),
   /** Why the content was not captured, e.g. "sensitive", "binary", "symlink". */
   omittedReason: z.string().optional(),
+  /** For `git-commit` evidence: the commit this patch belongs to. */
+  commit: z
+    .object({
+      sha: z.string().regex(/^[0-9a-f]{7,64}$/),
+      subject: z.string(),
+      authoredAt: z.string(),
+      filesChanged: z.number().int().nonnegative(),
+    })
+    .optional(),
   durationMs: z.number().int().nonnegative().optional(),
   capturedAt: z.iso.datetime({ offset: true }),
 });
@@ -79,6 +88,8 @@ export const Checkpoint = z
       /** null when HEAD is detached. */
       branch: z.string().nullable(),
       linkedWorktree: z.boolean().default(false),
+      /** Start of the window for commits captured as evidence (the session start), if any. */
+      commitsSince: z.string().nullable().default(null),
       dirtyFiles: z.array(DirtyFile),
     }),
     source: z.object({

@@ -94,3 +94,39 @@ describe('renderHandoff', () => {
     expect(checkpoint.handoff.budgetTokens).toBe(1500);
   });
 });
+
+describe('session commits in the handoff', () => {
+  const commitOf = (n: number, lines: number) => ({
+    sha: String(n).repeat(40),
+    shortSha: String(n).repeat(7),
+    subject: `feat: step ${n}`,
+    authoredAt: '2026-10-09T12:00:00Z',
+    filesChanged: 1,
+    linesAdded: lines,
+    linesDeleted: 0,
+    patch: `diff --git a/f${n} b/f${n}\n` + Array.from({ length: lines }, (_, i) => `+line ${i}`).join('\n'),
+    truncated: false,
+    sha256: null,
+    withheldFiles: [],
+  });
+
+  it('lists commits under Done so far and inlines the newest patch first', () => {
+    const cp = buildCheckpoint(
+      input({ git: snapshot([]), commits: { since: '2026-10-09T11:00:00Z', author: null, warnings: [], commits: [commitOf(1, 120), commitOf(2, 120)] } }),
+    );
+    const floor = renderHandoff(cp, { budgetTokens: 1 }).requiredTokens;
+    const r = renderHandoff(cp, { budgetTokens: floor + 500 });
+    expect(r.markdown).toContain('- [observed] Committed `1111111` feat: step 1');
+    expect(r.markdown).toContain('Commits since the session started (2026-10-09T11:00:00Z): 2');
+    expect(r.markdown).toContain('#### Commit `2222222` feat: step 2');
+    expect(r.markdown).not.toContain('#### Commit `1111111`');
+    expect(r.deferred).toEqual([expect.objectContaining({ label: 'patch of commit 1111111', retrieve: '`git show 1111111`' })]);
+  });
+
+  it('groups many deferred commit patches into one line', () => {
+    const commits = Array.from({ length: 7 }, (_, i) => commitOf(i + 1, 200));
+    const cp = buildCheckpoint(input({ git: snapshot([]), commits: { since: '1d', author: null, warnings: [], commits } }));
+    const r = renderHandoff(cp, { budgetTokens: 1 });
+    expect(r.markdown).toMatch(/- Patches of 7 commit\(s\) \(~\d+ tokens\): `git show <sha>`/);
+  });
+});

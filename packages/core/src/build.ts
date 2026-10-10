@@ -8,7 +8,7 @@ import {
 import { AgentRelayError, ExitCode } from './errors.js';
 import { sha256 } from './hash.js';
 import { redact, isSensitivePath, type RedactionFinding } from './redact.js';
-import type { GitSnapshot, TranscriptDigest, VerificationResult } from './snapshot.js';
+import type { GitSnapshot, SessionCommits, TranscriptDigest, VerificationResult } from './snapshot.js';
 import { outputExcerpt, truncateText } from './text.js';
 
 export interface UserTaskInput {
@@ -35,6 +35,8 @@ export interface BuildCheckpointInput {
   transcript: TranscriptDigest | null;
   user: UserTaskInput;
   verifications: VerificationResult[];
+  /** Commits made since the session started (work already committed mid-session). */
+  commits?: SessionCommits | null;
   targetProvider: string | null;
   budgetTokens: number;
   /** Problems found while collecting inputs (unreadable transcript, session from another directory...). */
@@ -130,6 +132,44 @@ export function buildCheckpoint(input: BuildCheckpointInput): Checkpoint {
   } else {
     warnings.push('Not a Git repository: there is no Git evidence, so file changes are unverified.');
   }
+
+  // --- Commits made during the session ---------------------------------------------------------
+  // Agents often commit as they go; without these the next agent would see a clean tree and
+  // no record of what was built.
+  const commitFacts: Fact[] = [];
+  const sessionCommits = input.commits?.commits ?? [];
+  sessionCommits.forEach((c, i) => {
+    const id = `ev-commit-${i + 1}`;
+    const ev: Evidence = {
+      id,
+      type: 'git-commit',
+      command: `git show ${c.shortSha}`,
+      exitCode: 0,
+      status: 'recorded',
+      truncated: c.truncated,
+      linesAdded: c.linesAdded,
+      linesDeleted: c.linesDeleted,
+      commit: { sha: c.sha, subject: r.text(c.subject), authoredAt: c.authoredAt, filesChanged: c.filesChanged },
+      capturedAt: at,
+    };
+    if (c.sha256) ev.sha256 = c.sha256;
+    if (c.patch) {
+      const limited = truncateText(c.patch, LIMITS.patchChars);
+      ev.excerpt = r.text(limited.text);
+      ev.truncated = c.truncated || limited.truncated;
+    }
+    if (c.withheldFiles.length > 0) {
+      ev.omittedReason = `sensitive: ${c.withheldFiles.join(', ')}`;
+      warnings.push(`Commit ${c.shortSha}: patches of sensitive file(s) were not captured: ${c.withheldFiles.join(', ')}`);
+    }
+    evidence.push(ev);
+    commitFacts.push({
+      text: `Committed \`${c.shortSha}\` ${r.text(c.subject)} (${c.filesChanged} file(s), +${c.linesAdded} -${c.linesDeleted})`,
+      provenance: 'observed',
+      evidenceRefs: [id],
+    });
+  });
+  if (input.commits) warnings.push(...input.commits.warnings);
 
   // --- Transcript evidence --------------------------------------------------------------------
   const transcriptRefs: string[] = [];
@@ -233,6 +273,7 @@ export function buildCheckpoint(input: BuildCheckpointInput): Checkpoint {
       gitHead: git?.head ?? null,
       branch: git?.branch ?? null,
       linkedWorktree: git?.linkedWorktree ?? false,
+      commitsSince: input.commits?.since ?? null,
       dirtyFiles: (git?.files ?? []).map((f) => ({
         path: f.path,
         status: f.status,
@@ -249,7 +290,7 @@ export function buildCheckpoint(input: BuildCheckpointInput): Checkpoint {
     task: {
       goal,
       constraints: userFacts(input.user.constraints),
-      completed: [...userFacts(input.user.completed), ...completed],
+      completed: [...userFacts(input.user.completed), ...commitFacts, ...completed],
       pending: userFacts(input.user.pending),
       blockers: [...userFacts(input.user.blockers), ...blockers],
       recentRequests,

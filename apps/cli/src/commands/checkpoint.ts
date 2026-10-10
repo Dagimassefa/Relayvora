@@ -16,6 +16,8 @@ export interface CheckpointSummary {
   goalProvenance: string;
   evidence: { total: number; failingCommands: number; passingCommands: number };
   files: { changed: number; linesAdded: number; linesDeleted: number };
+  /** Commits made since the session started; `inlined` patches made it into the handoff text. */
+  commits: { count: number; linesAdded: number; linesDeleted: number; inlined: number };
   /** What the handoff text contains, for the card when the full text is not printed. */
   content: { requests: number; blockers: number; pending: number; inlinedFiles: number; agentReport: boolean };
   handoff: { file: string; estimatedTokens: number | null; budgetTokens: number | null; deferred: number; deferredTokens: number };
@@ -32,6 +34,7 @@ export function summarize(result: CreateCheckpointResult, copied = false): Check
   const relFile = path.relative(cp.project.root, result.handoffFile).split(path.sep).join('/');
   const commands = cp.evidence.filter((e) => e.type === 'command' || e.type === 'test');
   const files = cp.evidence.filter((e) => e.type === 'git-diff' || e.type === 'file');
+  const commitEvidence = cp.evidence.filter((e) => e.type === 'git-commit');
   return {
     id: cp.id,
     createdAt: cp.createdAt,
@@ -48,6 +51,12 @@ export function summarize(result: CreateCheckpointResult, copied = false): Check
       changed: cp.project.dirtyFiles.length,
       linesAdded: files.reduce((n, e) => n + (e.linesAdded ?? 0), 0),
       linesDeleted: files.reduce((n, e) => n + (e.linesDeleted ?? 0), 0),
+    },
+    commits: {
+      count: commitEvidence.length,
+      linesAdded: commitEvidence.reduce((n, e) => n + (e.linesAdded ?? 0), 0),
+      linesDeleted: commitEvidence.reduce((n, e) => n + (e.linesDeleted ?? 0), 0),
+      inlined: commitEvidence.filter((e) => e.excerpt && !cp.handoff.deferred.some((d) => d.evidenceId === e.id)).length,
     },
     content: {
       requests: cp.task.recentRequests.length,
@@ -116,7 +125,12 @@ export function renderSummary(s: CheckpointSummary, t: Theme = PLAIN): string {
     `${label(t, 'GOAL')}${t.bold(goal)} ${t.fg(tagColor, `[${tag}]`)}`,
     '',
     `${label(t, 'TESTS')}${tests}`,
-    `${label(t, 'FILES')}${t.bold(String(s.files.changed))} changed${sep}${t.fg('lime', `+${num(s.files.linesAdded)}`)} ${t.fg('red', `-${num(s.files.linesDeleted)}`)}`,
+    `${label(t, 'FILES')}${t.bold(String(s.files.changed))} uncommitted${sep}${t.fg('lime', `+${num(s.files.linesAdded)}`)} ${t.fg('red', `-${num(s.files.linesDeleted)}`)}`,
+    ...(s.commits.count > 0
+      ? [
+          `${label(t, 'COMMITS')}${t.bold(String(s.commits.count))} this session${sep}${t.fg('lime', `+${num(s.commits.linesAdded)}`)} ${t.fg('red', `-${num(s.commits.linesDeleted)}`)}`,
+        ]
+      : []),
     `${label(t, 'BUDGET')}${meter(t, used, budget, 22)}  ${t.bold(num(used))}${t.dim(`/${num(budget)} tok`)}  ${t.fg('gray', `${pct}%`)}`,
   ];
   const c = s.content;
@@ -126,6 +140,7 @@ export function renderSummary(s: CheckpointSummary, t: Theme = PLAIN): string {
     c.blockers ? t.fg('red', `${c.blockers} blocker(s)`) : '',
     c.pending ? `${c.pending} to-do` : '',
     c.inlinedFiles ? `${c.inlinedFiles} diff(s)` : '',
+    s.commits.inlined ? `${s.commits.inlined} commit patch(es)` : '',
     c.agentReport ? 'agent report' : '',
   ].filter(Boolean);
   lines.push(`${label(t, 'HOLDS')}${contents.join(sep)}`);

@@ -63,7 +63,9 @@ function addCheckpointOptions(cmd: Command): Command {
     .option('--verify-timeout <seconds>', 'timeout per verification command', parsePositiveInt, 600)
     .option('--budget <tokens>', 'token budget for the handoff text (estimated tokens)', parsePositiveInt)
     .option('--no-transcript', 'do not read the session transcript')
-    .option('--copy', 'copy the handoff to the clipboard, ready to paste into the agent panel');
+    .option('--copy', 'copy the handoff to the clipboard, ready to paste into the agent panel')
+    .option('--commits-since <when>', 'include your commits since then ("2h", "1d", a date); default: the session start')
+    .option('--no-commits', 'do not include commits made during the session');
 }
 
 interface CheckpointFlags {
@@ -81,6 +83,8 @@ interface CheckpointFlags {
   budget?: number;
   transcript: boolean;
   copy?: boolean;
+  commits: boolean;
+  commitsSince?: string;
 }
 
 function toCreateOptions(flags: CheckpointFlags, opts: GlobalOptions, ui: Ui): CreateCheckpointOptions {
@@ -99,6 +103,8 @@ function toCreateOptions(flags: CheckpointFlags, opts: GlobalOptions, ui: Ui): C
   if (flags.to) o.to = flags.to;
   if (flags.goal) o.goal = flags.goal;
   if (flags.budget !== undefined) o.budget = flags.budget;
+  o.commits = flags.commits;
+  if (flags.commitsSince) o.commitsSince = flags.commitsSince;
   if (!opts.json) o.progress = terminalProgress(ui.err, process.stderr);
   return o;
 }

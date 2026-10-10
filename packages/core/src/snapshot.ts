@@ -44,6 +44,33 @@ export interface GitSnapshot {
   warnings: string[];
 }
 
+/** A commit made since the session started: the work an agent finished and committed mid-session. */
+export interface SessionCommit {
+  sha: string;
+  shortSha: string;
+  subject: string;
+  authoredAt: string;
+  filesChanged: number;
+  linesAdded: number;
+  linesDeleted: number;
+  /** Patch of the commit (sensitive files removed), possibly truncated. Null if not captured. */
+  patch: string | null;
+  truncated: boolean;
+  /** Hash of the full patch before truncation. */
+  sha256: string | null;
+  /** Files whose patch was withheld because they look sensitive. */
+  withheldFiles: string[];
+}
+
+export interface SessionCommits {
+  commits: SessionCommit[];
+  /** The `--since` value used. */
+  since: string;
+  /** Author filter applied (the repository's user.email), if any. */
+  author: string | null;
+  warnings: string[];
+}
+
 export interface TranscriptUsage {
   inputTokens: number | null;
   cachedInputTokens: number | null;

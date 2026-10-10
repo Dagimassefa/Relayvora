@@ -158,3 +158,25 @@ describe('CLI', () => {
     expect(cp.decisions[0].text).toBe('use UTC');
   });
 });
+
+describe('session commits', () => {
+  it('includes work committed during the session even when the tree is clean', async () => {
+    await git('config', 'user.email', 'me@example.com');
+    fs.writeFileSync(path.join(project, 'src', 'portal.js'), 'export const route = (u) => `/portal/${u}`;\n');
+    await git('add', '-A');
+    await git('-c', 'user.email=me@example.com', 'commit', '-q', '-m', 'feat: route users to their portal');
+
+    // The Codex session in beforeEach started on 2026-10-01, before these commits.
+    const r = await createCheckpoint(ctx(), { from: 'codex', to: 'claude' });
+    const cp = r.checkpoint;
+    expect(cp.project.dirtyFiles).toEqual([]);
+    expect(cp.task.completed.map((f) => f.text)).toEqual([
+      expect.stringMatching(/^Committed `[0-9a-f]{7,}` feat: route users to their portal \(2 file\(s\)/),
+    ]);
+    expect(cp.handoff.prompt).toContain('feat: route users to their portal');
+    expect(cp.handoff.prompt).toContain('+export const route');
+
+    const off = await createCheckpoint(ctx(), { from: 'codex', to: 'claude', commits: false });
+    expect(off.checkpoint.evidence.some((e) => e.type === 'git-commit')).toBe(false);
+  });
+});

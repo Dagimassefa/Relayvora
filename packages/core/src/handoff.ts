@@ -146,6 +146,10 @@ function buildItems(cp: Checkpoint, maxFileRows: number): ContextItem[] {
       `- HEAD: ${p.gitHead ? `\`${p.gitHead.slice(0, 12)}\`` : '(no commits yet)'}`,
       `- Uncommitted changes: ${p.dirtyFiles.length} file(s)`,
     );
+    const commitCount = cp.evidence.filter((e) => e.type === 'git-commit').length;
+    if (p.commitsSince) {
+      repo.push(`- Commits since the session started (${p.commitsSince}): ${commitCount}${commitCount ? ', listed under Done so far' : ''}`);
+    }
   } else {
     repo.push('- Not a Git repository');
   }
@@ -206,6 +210,18 @@ function buildItems(cp: Checkpoint, maxFileRows: number): ContextItem[] {
     });
   }
 
+  // Patches of work committed during the session, after the uncommitted changes. Newest first: when
+  // the budget only fits some, the latest work is the most relevant to continue from.
+  for (const ev of cp.evidence.filter((e) => e.type === 'git-commit').reverse()) {
+    if (!ev.excerpt || !ev.commit) continue;
+    const short = ev.commit.sha.slice(0, 7);
+    push('diffs', 'changed', `#### Commit \`${short}\` ${ev.commit.subject}${ev.truncated ? ' (truncated)' : ''}\n${fence(ev.excerpt, 'diff')}`, {
+      label: `patch of commit ${short}`,
+      evidenceId: ev.id,
+      retrieve: `\`git show ${short}\``,
+    });
+  }
+
   push(
     'instructions',
     'required',
@@ -232,10 +248,15 @@ function deferredLines(deferred: DeferredRef[]): string[] {
 
   const isDiff = (d: DeferredRef) => d.label.startsWith('diff of ');
   const isFile = (d: DeferredRef) => d.label.startsWith('content of new file ');
+  const isCommit = (d: DeferredRef) => d.label.startsWith('patch of commit ');
   const sum = (ds: DeferredRef[]) => ds.reduce((n, d) => n + d.estimatedTokens, 0);
   const diffs = deferred.filter(isDiff);
   const files = deferred.filter(isFile);
-  const lines = deferred.filter((d) => !isDiff(d) && !isFile(d)).map(line);
+  const commits = deferred.filter(isCommit);
+  const lines = deferred.filter((d) => !isDiff(d) && !isFile(d) && !isCommit(d)).map(line);
+  if (commits.length > 0) {
+    lines.push(`- Patches of ${commits.length} commit(s) (~${sum(commits)} tokens): \`git show <sha>\` for commits listed under Done so far`);
+  }
   if (diffs.length > 0) {
     const cmd = diffs[0]!.retrieve.includes('--cached') ? 'git diff --cached' : 'git diff HEAD';
     lines.push(`- Diffs of ${diffs.length} changed file(s) (~${sum(diffs)} tokens): \`${cmd} -- <path>\` for paths in Changed files`);

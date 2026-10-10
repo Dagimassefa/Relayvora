@@ -14,12 +14,13 @@ import {
   type AgentAdapter,
   type Checkpoint,
   type RenderResult,
+  type SessionCommits,
   type SessionSummary,
   type TranscriptDigest,
   type UserTaskInput,
   type VerificationResult,
 } from '@agentrelay/core';
-import { collectGitSnapshot } from '@agentrelay/git';
+import { collectCommitsSince, collectGitSnapshot, resolveSince } from '@agentrelay/git';
 import type { Store } from '@agentrelay/storage';
 import { type CliContext, openStore, selectAdapters } from './context.js';
 import { ensureProject, handoffPath } from './project.js';
@@ -38,6 +39,10 @@ export interface CreateCheckpointOptions extends UserTaskInput {
   verifyTimeoutSec?: number;
   /** Set false to skip reading the session transcript. */
   transcript?: boolean;
+  /** Set false to skip commits made since the session started. */
+  commits?: boolean;
+  /** Include commits since this time ("2h", "3d", an ISO date...). Defaults to the session start. */
+  commitsSince?: string;
   /** Reports each step (spinner on stderr in the CLI). */
   progress?: Progress;
 }
@@ -192,6 +197,24 @@ export async function createCheckpoint(ctx: CliContext, options: CreateCheckpoin
         )
       : null;
 
+    // Work committed mid-session is invisible in the working tree, so collect it explicitly.
+    const since = options.commitsSince ? resolveSince(options.commitsSince) : (session?.startedAt ?? null);
+    let commits: SessionCommits | null = null;
+    if (project.isGitRepo && options.commits !== false && since) {
+      commits = await progress.step(
+        'Collecting session commits',
+        () => collectCommitsSince(project.root, since),
+        (c) => ({
+          status: 'ok',
+          detail: c.commits.length
+            ? `${c.commits.length} commit(s) · +${c.commits.reduce((n, x) => n + x.linesAdded, 0)} -${c.commits.reduce((n, x) => n + x.linesDeleted, 0)}`
+            : 'none since the session started',
+        }),
+      );
+    } else if (project.isGitRepo && options.commits !== false && session && !session.startedAt) {
+      extraWarnings.push('The session has no recorded start time, so commits made during it were not collected; use --commits-since.');
+    }
+
     const verifications: VerificationResult[] = [];
     for (const command of verify) {
       const result = await progress.step(
@@ -220,6 +243,7 @@ export async function createCheckpoint(ctx: CliContext, options: CreateCheckpoin
       transcript,
       user: options,
       verifications,
+      commits,
       targetProvider: options.to ?? null,
       budgetTokens: options.budget ?? project.config.handoffBudgetTokens,
       extraWarnings,
