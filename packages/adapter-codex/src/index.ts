@@ -73,7 +73,7 @@ export const codexAdapter: AgentAdapter = {
   capabilities: {
     discoverSessions: 'best-effort',
     readTranscript: 'best-effort',
-    launch: 'unsupported',
+    launch: 'documented',
     usageReporting: 'best-effort',
   },
 
@@ -83,6 +83,11 @@ export const codexAdapter: AgentAdapter = {
 
   readTranscript(sessionPath: string) {
     return readCodexTranscript(sessionPath);
+  },
+
+  /** Documented by `codex [OPTIONS] [PROMPT]`: starts the interactive CLI with the prompt as the first message. */
+  launchArgs(prompt: string) {
+    return [prompt];
   },
 
   sessionRoots(env = process.env) {

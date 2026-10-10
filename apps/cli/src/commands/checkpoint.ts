@@ -4,6 +4,7 @@ import type { CheckpointRow } from '@agentrelay/storage';
 import { type CreateCheckpointResult, loadCheckpoint } from '../checkpoint-service.js';
 import { type CliContext, openStore } from '../context.js';
 import { locateProject } from '../project.js';
+import { pointerPrompt } from '../launch.js';
 import { box, compact, label, meter, num, providerChip, providerName, relativeTime, shortId, statusIcon, table } from '../ui/components.js';
 import { PLAIN, type Theme } from '../ui/theme.js';
 
@@ -31,7 +32,6 @@ export interface CheckpointSummary {
 
 export function summarize(result: CreateCheckpointResult, copied = false): CheckpointSummary {
   const cp = result.checkpoint;
-  const relFile = path.relative(cp.project.root, result.handoffFile).split(path.sep).join('/');
   const commands = cp.evidence.filter((e) => e.type === 'command' || e.type === 'test');
   const files = cp.evidence.filter((e) => e.type === 'git-diff' || e.type === 'file');
   const commitEvidence = cp.evidence.filter((e) => e.type === 'git-commit');
@@ -74,7 +74,7 @@ export function summarize(result: CreateCheckpointResult, copied = false): Check
     },
     usage: cp.usage,
     warnings: cp.warnings,
-    pointer: `Continue the task in ${relFile}. Read it first, verify its claims, then carry on.`,
+    pointer: pointerPrompt(cp, result.handoffFile),
     copied,
   };
 }
@@ -95,7 +95,7 @@ const PROVENANCE_TAG: Record<string, string> = {
 const PANEL_NAMES: Record<string, string> = { claude: 'Claude Code', codex: 'Codex' };
 
 /** The "mission card" printed after a checkpoint is captured. */
-export function renderSummary(s: CheckpointSummary, t: Theme = PLAIN): string {
+export function renderSummary(s: CheckpointSummary, t: Theme = PLAIN, launching = false): string {
   const sep = t.fg('gray', ` ${t.sym.dot} `);
   const from =
     s.source.provider === 'manual'
@@ -165,10 +165,17 @@ export function renderSummary(s: CheckpointSummary, t: Theme = PLAIN): string {
   out.push('', `  ${arrow} ${t.dim('review')}  ${t.bold(displayPath(s.handoff.file))}  ${t.dim(`or agentrelay checkpoint show ${s.id}`)}`);
   if (s.copied) {
     out.push(`  ${statusIcon(t, 'ok')} ${t.bold(t.fg('lime', 'copied'))}  paste into ${panel} ${t.dim('(Ctrl+V / Cmd+V)')}`);
-  } else {
-    out.push(`  ${arrow} ${t.dim('relay ')}  paste it into ${panel}, or re-run with ${t.bold('--copy')}`);
   }
-  out.push(`  ${arrow} ${t.dim('or say')}  ${t.fg('orange', s.pointer)} ${t.dim('(the agent reads the file itself)')}`, '');
+  if (launching) {
+    out.push('');
+    return out.join('\n');
+  }
+  if (!s.copied) {
+    out.push(
+      `  ${arrow} ${t.dim('relay ')}  ${t.bold(`agentrelay launch ${s.id}`)} ${t.dim('in a terminal,')} or paste into ${panel} ${t.dim('(--copy)')}`,
+    );
+  }
+  out.push(`  ${arrow} ${t.dim('or say')}  ${t.fg('orange', s.pointer)}`, '');
   return out.join('\n');
 }
 

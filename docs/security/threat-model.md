@@ -33,7 +33,14 @@ No shell strings, ever. See `planSpawn` in `packages/core/src/exec.ts` for the W
 - Writing an export to disk requires confirmation; non-interactive use must pass `--yes`.
 - `audit_events` records checkpoint creation and export, with the handoff file path and sizes.
 
+## Launching agents (Phase 3)
+
+- Only through each agent's documented CLI (`claude [prompt]`, `codex [PROMPT]`), with an argument array and no
+  shell; never by writing to vendor session files or databases.
+- Always confirmed by the user (`--yes` required without a terminal). `--dry-run` shows the exact command.
+- The prompt is a fixed pointer to the handoff file inside the project; no transcript text is put on a command line.
+- `audit_events` records each launch: agent, executable, version, and SHA-256 of the prompt and handoff file.
+
 ## Open items before alpha
 
-- Audit trail of exactly what was sent to which agent at launch time, with hashes (Phase 3).
 - Retention and delete commands (`retentionDays` exists in config but is not enforced yet).

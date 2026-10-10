@@ -1,7 +1,7 @@
-import { AGENTRELAY_VERSION, AgentRelayError, ExitCode } from '@agentrelay/core';
+import { AGENTRELAY_VERSION, AgentRelayError, ExitCode, type Checkpoint } from '@agentrelay/core';
 import { Command, CommanderError, InvalidArgumentError, Option } from 'commander';
 import { ZodError } from 'zod';
-import { type CreateCheckpointOptions, type CreateCheckpointResult, createCheckpoint } from './checkpoint-service.js';
+import { type CreateCheckpointOptions, type CreateCheckpointResult, createCheckpoint, loadCheckpoint } from './checkpoint-service.js';
 import {
   renderCheckpointList,
   renderSummary,
@@ -16,9 +16,10 @@ import { renderHome, runHome } from './commands/home.js';
 import { renderInit, runInit } from './commands/init.js';
 import { renderSessions, runSessions } from './commands/sessions.js';
 import { copyToClipboard } from './clipboard.js';
-import { createContext } from './context.js';
+import { type CliContext, createContext, selectAdapters } from './context.js';
+import { executeLaunch, planLaunch } from './launch.js';
 import { emit } from './output.js';
-import { banner, statusIcon } from './ui/components.js';
+import { banner, label, providerChip, rule, statusIcon } from './ui/components.js';
 import { highlightMarkdown } from './ui/markdown.js';
 import { terminalProgress } from './ui/progress.js';
 import { PLAIN, createTheme, type Theme } from './ui/theme.js';
@@ -120,6 +121,39 @@ async function maybeCopy(flags: CheckpointFlags, result: CreateCheckpointResult,
 `);
     return false;
   }
+}
+
+interface LaunchFlags {
+  yes?: boolean;
+  dryRun?: boolean;
+}
+
+/** Shows the launch plan, asks, launches, and reports when the agent exits. */
+async function launchWithUi(ctx: CliContext, cp: Checkpoint, target: string | null, flags: LaunchFlags, ui: Ui): Promise<void> {
+  const t = ui.err;
+  const plan = await planLaunch(ctx, cp, target);
+  const where = plan.source === 'editor-extension' ? `${plan.editor} extension build` : 'on PATH';
+  const version = plan.version ? ` ${plan.version.replace(/\s*\([^)]*\)\s*$/, '')}` : '';
+  process.stderr.write(
+    [
+      `  ${rule(t, `${t.sym.bolt} LAUNCH`, 'lime', Math.min(t.width, 78) - 2)}`,
+      '',
+      `  ${label(t, 'agent')}${providerChip(t, plan.target)} ${t.bold(`${plan.displayName}${version}`)} ${t.dim(`(${where})`)}`,
+      `  ${label(t, 'in')}${t.fg('cyan', plan.cwd)}`,
+      `  ${label(t, 'says')}${t.fg('orange', plan.prompt)}`,
+      '',
+      '',
+    ].join('\n'),
+  );
+  if (flags.dryRun) {
+    process.stderr.write(`  ${statusIcon(t, 'info')} ${t.dim('dry run, nothing launched:')} ${plan.executable} ${plan.args.map((a) => JSON.stringify(a)).join(' ')}\n\n`);
+    return;
+  }
+  const result = await executeLaunch(ctx, plan, flags.yes === undefined ? {} : { yes: flags.yes });
+  const ok = result.exitCode === 0 || result.exitCode === null;
+  process.stderr.write(
+    `\n  ${statusIcon(t, ok ? 'ok' : 'warn')} ${t.bold(`back from ${plan.displayName}`)} ${t.dim(`(exit ${result.exitCode ?? 'signal'})`)}  ${t.dim(`relay again: agentrelay handoff --from ${plan.target} --to ${plan.target === 'claude' ? 'codex' : 'claude'}`)}\n\n`,
+  );
 }
 
 function styleHelp(program: Command, t: Theme): void {
@@ -252,29 +286,50 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
       .description('build a checkpoint and preview the handoff for another agent')
       .requiredOption('--to <provider>', 'provider that will receive the handoff (claude, codex)')
       .option('--preview', 'show the handoff without launching anything (default)')
-      .option('--confirm', 'launch the target agent with the handoff (not available yet)')
+      .option('--confirm', 'launch the target agent in this terminal with the handoff (asks first)')
+      .option('-y, --yes', 'with --confirm: launch without asking')
+      .option('--dry-run', 'with --confirm: show what would be launched, without launching')
       .option('--print', 'print the full handoff text in the terminal (always printed when output is piped)'),
-  ).action(async (flags: CheckpointFlags & { confirm?: boolean; print?: boolean }, cmd: Command) => {
+  ).action(async (flags: CheckpointFlags & LaunchFlags & { confirm?: boolean; print?: boolean }, cmd: Command) => {
     const { opts, ctx } = ctxFor(cmd);
-    if (flags.confirm) {
-      throw new AgentRelayError(
-        'Launching the target agent is not implemented yet (planned for Phase 3). Use --preview and hand over the file manually.',
-        ExitCode.Unsupported,
-      );
+    if (flags.confirm && opts.json && !flags.dryRun) {
+      throw new AgentRelayError('--json cannot be combined with launching an agent; use --dry-run, or drop --json.', ExitCode.Usage);
     }
+    if (flags.confirm) selectAdapters(ctx, flags.to); // fail on an unknown agent before doing any work
     const result = await createCheckpoint(ctx, toCreateOptions(flags, opts, ui));
     const copied = await maybeCopy(flags, result, ui, Boolean(opts.json));
     if (opts.json) {
-      emit(opts, { ...summarize(result, copied), markdown: result.checkpoint.handoff.prompt }, () => '');
-    } else {
-      // Piped or redirected: the handoff text goes to stdout so `> handoff.md` works. On a terminal the
-      // full text (every diff) would bury the card, so it is shown only with --print.
-      if (flags.print || !process.stdout.isTTY) {
-        process.stdout.write(highlightMarkdown(result.checkpoint.handoff.prompt ?? '', ui.out));
-      }
-      process.stderr.write(`${renderSummary(summarize(result, copied), ui.err)}\n`);
+      const plan = flags.confirm ? await planLaunch(ctx, result.checkpoint, flags.to ?? null) : undefined;
+      emit(opts, { ...summarize(result, copied), markdown: result.checkpoint.handoff.prompt, ...(plan ? { launch: plan } : {}) }, () => '');
+      return;
     }
+    // Piped or redirected: the handoff text goes to stdout so `> handoff.md` works. On a terminal the
+    // full text (every diff) would bury the card, so it is shown only with --print.
+    if (!flags.confirm && (flags.print || !process.stdout.isTTY)) {
+      process.stdout.write(highlightMarkdown(result.checkpoint.handoff.prompt ?? '', ui.out));
+    }
+    process.stderr.write(`${renderSummary(summarize(result, copied), ui.err, Boolean(flags.confirm))}\n`);
+    if (flags.confirm) await launchWithUi(ctx, result.checkpoint, flags.to ?? null, flags, ui);
   });
+
+  program
+    .command('launch <checkpoint>')
+    .description('start the target agent in this terminal with an existing handoff (asks first)')
+    .option('--to <provider>', 'agent to launch (default: the checkpoint target)')
+    .option('-y, --yes', 'launch without asking')
+    .option('--dry-run', 'show what would be launched, without launching')
+    .action(async (id: string, flags: LaunchFlags & { to?: string }, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      if (opts.json && !flags.dryRun) {
+        throw new AgentRelayError('--json cannot be combined with launching an agent; use --dry-run, or drop --json.', ExitCode.Usage);
+      }
+      const cp = await loadCheckpoint(ctx, id);
+      if (opts.json) {
+        emit(opts, await planLaunch(ctx, cp, flags.to ?? null), () => '');
+        return;
+      }
+      await launchWithUi(ctx, cp, flags.to ?? null, flags, ui);
+    });
 
   const config = program.command('config').description('inspect configuration');
   config

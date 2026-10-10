@@ -158,3 +158,41 @@ export function runCommand(command: string, args: string[] = [], options: ExecOp
     child.stdin.end(options.input);
   });
 }
+
+export interface InteractiveResult {
+  exitCode: number | null;
+  signal: NodeJS.Signals | null;
+}
+
+/**
+ * Hands the terminal to a child process (stdin/stdout/stderr inherited) and waits for it to exit.
+ * Used to launch an agent's interactive session. No shell, same Windows batch-file rules as runCommand.
+ */
+export function runInteractive(command: string, args: string[], options: { cwd?: string; env?: NodeJS.ProcessEnv } = {}): Promise<InteractiveResult> {
+  const env = options.env ?? process.env;
+  const resolved = findExecutable(command, env);
+  if (!resolved) {
+    return Promise.reject(new AgentRelayError(`Executable not found: ${command}`, ExitCode.NotFound));
+  }
+  const plan = planSpawn(resolved, args);
+  return new Promise((resolve, reject) => {
+    // Ctrl+C belongs to the agent while it runs; do not let it kill AgentRelay underneath it.
+    const ignore = () => {};
+    process.on('SIGINT', ignore);
+    const child = spawn(plan.file, plan.args, {
+      cwd: options.cwd,
+      env,
+      shell: false,
+      stdio: 'inherit',
+      windowsVerbatimArguments: plan.windowsVerbatimArguments,
+    });
+    child.on('error', (error) => {
+      process.off('SIGINT', ignore);
+      reject(new AgentRelayError(`Failed to start ${command}: ${error.message}`, ExitCode.Failure, { cause: error }));
+    });
+    child.on('close', (exitCode, signal) => {
+      process.off('SIGINT', ignore);
+      resolve({ exitCode, signal });
+    });
+  });
+}

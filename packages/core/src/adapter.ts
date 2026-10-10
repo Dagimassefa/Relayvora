@@ -20,6 +20,11 @@ export interface AgentAdapter {
   discoverSessions(options?: DiscoverOptions): Promise<SessionDiscovery>;
   /** Extracts prompts, the last agent message and usage from a session file. Read-only. */
   readTranscript?(sessionPath: string): Promise<TranscriptDigest>;
+  /**
+   * Arguments that start an interactive session with `prompt` as the first message, using the
+   * agent's documented command-line interface. Absent when launching is unsupported.
+   */
+  launchArgs?(prompt: string): string[];
 }
 
 export interface AdapterCapabilities {

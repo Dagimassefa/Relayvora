@@ -145,8 +145,11 @@ describe('CLI', () => {
     expect(parsed.markdown).toContain('# Handoff for claude: Fix it');
   });
 
-  it('handoff --confirm is refused with the Unsupported exit code', async () => {
-    expect((await run('handoff', '--to', 'claude', '--goal', 'x', '--confirm')).code).toBe(4);
+  it('refuses to mix --json with launching, and rejects unknown agents before doing work', async () => {
+    expect((await run('--json', 'handoff', '--to', 'claude', '--goal', 'x', '--confirm')).code).toBe(2);
+    expect((await run('handoff', '--to', 'nope', '--goal', 'x', '--confirm')).code).toBe(2);
+    const { stdout } = await run('--json', 'checkpoint', 'create', '--goal', 'g');
+    expect((await run('--json', 'launch', JSON.parse(stdout).id)).code).toBe(2);
   });
 
   it('repeatable task flags are all recorded', async () => {

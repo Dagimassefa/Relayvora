@@ -3,8 +3,8 @@
 Move unfinished work between AI coding agents (Claude Code ⇄ Codex CLI) with a compact,
 evidence-backed checkpoint instead of replaying a long transcript.
 
-> **Status: pre-alpha.** Session discovery, checkpoints and handoff previews work. Launching the target
-> agent (Phase 3) and benchmarking (Phase 4) are not built yet. No token-saving claims are made until they
+> **Status: pre-alpha.** Session discovery, checkpoints, handoff previews and launching the target agent work.
+> Benchmarking (Phase 4) is not built yet. No token-saving claims are made until they
 > are measured (see the blueprint's §11).
 
 ## Requirements
@@ -39,7 +39,8 @@ Without linking, run `pnpm agentrelay <command>` from the repo root.
 | `agentrelay sessions [-p claude\|codex] [--all] [-n 20]` | Lists local agent sessions for this project, newest first. Read-only. |
 | `agentrelay checkpoint create [options]` | Captures task state, Git evidence and verification results; writes a handoff preview. |
 | `agentrelay checkpoint list` / `show <id>` | Lists checkpoints; prints the handoff Markdown (`--format json` for everything, `--budget` to re-render). |
-| `agentrelay handoff --to <provider> [options]` | Same as `checkpoint create`, then prints the handoff. `--confirm` (launch) is not available yet. |
+| `agentrelay handoff --to <provider> [options]` | Same as `checkpoint create`, then shows the handoff. Add `--confirm` to launch the agent in this terminal. |
+| `agentrelay launch <id> [--to <provider>]` | Starts the target agent with an existing (possibly edited) handoff. |
 | `agentrelay export <id> [--out file] [--format json]` | Exports a checkpoint, re-redacted. Writing a file asks for confirmation (`--yes` to skip); never overwrites without `--force`. |
 | `agentrelay config show` | Shows resolved data directory, database path and project config. |
 
@@ -63,6 +64,21 @@ agentrelay handoff --from codex --to claude \
   other authors excluded) are listed as `[observed]` under *Done so far*, with their patches inlined newest-first
   while they fit. `--commits-since 2h` (or a date) sets the window, which is useful without a session.
   `--no-commits` turns it off.
+
+### Launching the next agent
+
+```sh
+agentrelay handoff --from codex --to claude --verify "npm test" --confirm   # create, then launch
+agentrelay launch cp-20261010-045701-a245                                  # launch an existing handoff
+```
+
+AgentRelay starts the agent's interactive session in your terminal, in the project folder, using the agent's
+documented command line (`claude [prompt]`, `codex [PROMPT]`). It uses the global CLI if it is on PATH, otherwise the
+copy bundled in your editor extension. The first message is a short pointer to the handoff file, so long handoffs
+never hit command-line limits and any edits you made to the file are what the agent reads. It always asks before
+launching (`-y` to skip; scripts must pass `--yes`), `--dry-run` shows the exact command, and every launch is
+recorded in the audit log with hashes of the prompt and handoff file. To continue in an editor panel instead, use
+`--copy` and paste.
 
 ### What a handoff contains
 
@@ -108,7 +124,7 @@ with `--json`, with `--no-color`, or when `NO_COLOR` is set; `FORCE_COLOR=1..3` 
 | 1 | Failure |
 | 2 | Usage error (bad flag, unknown provider) |
 | 3 | Not found |
-| 4 | Unsupported (e.g. `handoff --confirm` before Phase 3) |
+| 4 | Unsupported (e.g. an agent without a launch interface) |
 | 5 | Cancelled |
 | 6 | Precondition failed (e.g. `doctor` found a blocking problem, not a Git repo) |
 
@@ -150,5 +166,5 @@ CI runs build, tests and a CLI smoke test on Windows, macOS and Linux with Node 
 - [x] Phase 1: monorepo, CLI foundation, `init`/`doctor`/`sessions`/`config`, SQLite + migrations, safe subprocess
 - [x] Checkpoint schema v0.1 with provenance rules; redaction pipeline
 - [x] Phase 2: Git diff evidence, transcript digests, `--verify` evidence, `checkpoint create/list/show`, budgeted Markdown handoff, `export`
-- [ ] Phase 3: `handoff --confirm` launching the target agent (global CLI or the copy bundled in an editor extension)
+- [x] Phase 3: `handoff --confirm` / `launch` start the target agent (global CLI or the copy bundled in an editor extension)
 - [ ] Phase 4: usage capture, benchmark harness, signed releases
