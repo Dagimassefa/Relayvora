@@ -55,6 +55,9 @@ describe('assessRelay', () => {
     expect(assess(40_000).verdict).toBe('continue');
     expect(assess(90_000).verdict).toBe('either');
     expect(assess(170_000)).toMatchObject({ verdict: 'either', alert: null });
+    expect(assess(170_000).headline).toBe('large session (170k/call): a relay starts at ~45k/call and pays back after ~8 calls');
+    expect(assess(826_000)).toMatchObject({ verdict: 'relay', alert: null });
+    expect(assess(826_000).headline).toMatch(/pays back after ~2 calls/);
     expect(assess(170_000, { compactions: 2 })).toMatchObject({ verdict: 'relay', alert: 'compacted' });
     expect(assess(null).verdict).toBe('either');
   });
@@ -66,5 +69,15 @@ describe('formatDuration', () => {
     expect(formatDuration(45)).toBe('45m');
     expect(formatDuration(150)).toBe('3h');
     expect(formatDuration(3 * 1440)).toBe('3d');
+  });
+});
+
+describe('breakEvenCalls', () => {
+  it('shrinks as the session grows, matching the benchmark at 160k', async () => {
+    const { breakEvenCalls } = await import('../src/advice.js');
+    expect(breakEvenCalls(160_000)).toBe(8);
+    expect(breakEvenCalls(300_000)).toBe(4);
+    expect(breakEvenCalls(826_000)).toBe(2);
+    expect(breakEvenCalls(40_000)).toBe(Number.POSITIVE_INFINITY);
   });
 });

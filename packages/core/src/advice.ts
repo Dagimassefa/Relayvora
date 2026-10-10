@@ -16,6 +16,26 @@ export const CACHE_TTL_MINUTES = 60;
 export const LIMIT_ASSUMED_MINUTES = 5 * 60;
 export const QUOTA_WARN_PERCENT = 90;
 
+/** Context a fresh session starts at: the agent's own instructions plus the handoff (benchmarked ~41-47k). */
+export const FRESH_SESSION_TOKENS = 45_000;
+/** Cache writes cost ~40x cache reads (fitted from benchmark runs: ~$8.13 vs ~$0.20 per 1M tokens). */
+export const CACHE_WRITE_TO_READ = 40;
+/** A fresh session's one-time cost: ~20k tokens written to cache plus ~2 orientation calls. */
+const RELAY_SETUP_READ_EQUIVALENT = 20_000 * CACHE_WRITE_TO_READ + 2 * FRESH_SESSION_TOKENS;
+/** At or below this many calls, a warm relay is worth recommending outright. */
+export const FAST_PAYBACK_CALLS = 3;
+
+/**
+ * Calls in the new session before a relay is cheaper than continuing a warm session of this size.
+ * Each call saves (ctx - fresh) cached reads; the setup costs ~20k cache writes plus two calls.
+ * Checks out against the benchmark: 160k/call gives ~8 (measured estimate ~9).
+ */
+export function breakEvenCalls(contextTokens: number): number {
+  const savedPerCall = contextTokens - FRESH_SESSION_TOKENS;
+  if (savedPerCall <= 0) return Number.POSITIVE_INFINITY;
+  return Math.max(1, Math.ceil(RELAY_SETUP_READ_EQUIVALENT / savedPerCall));
+}
+
 export type RelayVerdict = 'relay' | 'either' | 'continue';
 
 export interface RelayAssessment {
@@ -95,11 +115,14 @@ export function assessRelay(input: AssessInput): RelayAssessment {
   }
   if (ctx === null) return { verdict: 'either', headline: 'no usage recorded for this session', reasons, alert: null };
   if (ctx >= LARGE_SESSION_TOKENS) {
+    const calls = breakEvenCalls(ctx);
+    const fast = calls <= FAST_PAYBACK_CALLS;
+    const compacted = Boolean(h && h.compactions > 0);
     return {
-      verdict: h && h.compactions > 0 ? 'relay' : 'either',
-      headline: `large session (${k(ctx)}/call): a relay cuts context ~70%; cost breaks even after ~10 calls`,
+      verdict: fast || compacted ? 'relay' : 'either',
+      headline: `large session (${k(ctx)}/call): a relay starts at ~${k(FRESH_SESSION_TOKENS)}/call and pays back after ~${calls} call${calls === 1 ? '' : 's'}`,
       reasons,
-      alert: h && h.compactions > 0 ? 'compacted' : null,
+      alert: compacted ? 'compacted' : null,
     };
   }
   if (ctx < SMALL_SESSION_TOKENS) {
