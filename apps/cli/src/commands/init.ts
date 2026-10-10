@@ -50,7 +50,7 @@ export function renderInit(r: InitResult, t: Theme = PLAIN): string {
     `    ${label(t, 'store')} ${t.dim(r.dataDir)}`,
     ...r.warnings.map((w) => `  ${statusIcon(t, 'warn')} ${t.fg('amber', w)}`),
     '',
-    `  ${t.fg('cyan', t.sym.arrow)} ${t.dim('next:')} ${t.bold('agentrelay handoff --from codex --to claude --verify "pnpm test"')}`,
+    `  ${t.fg('cyan', t.sym.arrow)} ${t.dim('next:')} ${t.bold('agentrelay handoff --from codex --to claude --verify auto')}`,
     '',
   ].join('\n');
 }

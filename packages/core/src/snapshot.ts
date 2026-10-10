@@ -79,6 +79,24 @@ export interface TranscriptUsage {
   note: string;
 }
 
+/** Per-turn facts from the agent's own records (provider-reported). */
+export interface TurnStats {
+  /** Model calls recorded in the session. */
+  count: number;
+  firstAt: string | null;
+  lastAt: string | null;
+  /** Input context of the first model call: system prompt, tools and the opening message. */
+  firstContextTokens: number | null;
+  /** Input context of the last model call: what continuing this session would carry into each turn. */
+  lastContextTokens: number | null;
+  /**
+   * Onboarding: model calls (and their input tokens) before the first call that edited a file.
+   * Null when the session never edited anything.
+   */
+  callsBeforeFirstEdit: number | null;
+  tokensBeforeFirstEdit: number | null;
+}
+
 export interface TranscriptDigest {
   title: string | null;
   firstUserPrompt: string | null;
@@ -89,6 +107,7 @@ export interface TranscriptDigest {
   userPromptCount: number;
   lastAgentMessage: string | null;
   usage: TranscriptUsage | null;
+  turns: TurnStats | null;
   warnings: string[];
 }
 

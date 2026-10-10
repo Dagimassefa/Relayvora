@@ -1,5 +1,6 @@
 import {
   PromptCollector,
+  TurnTracker,
   asNumber,
   asRecord,
   forEachJsonlRecord,
@@ -58,12 +59,15 @@ export async function readCodexTranscript(file: string): Promise<TranscriptDiges
   let eventAgent: string | null = null;
   let itemAgent: string | null = null;
   let usage: TranscriptUsage | null = null;
+  const tracker = new TurnTracker();
+  let lastTotal = -1;
 
   const stats = await forEachJsonlRecord(
     file,
     (value) => {
       const record = asRecord(value);
       if (!record) return;
+      tracker.seen(record.timestamp);
       // Legacy rollouts put the item at the top level instead of under `payload`.
       const payload = record.type === 'event_msg' || record.type === 'response_item' ? asRecord(record.payload) : record;
       if (!payload) return;
@@ -77,7 +81,14 @@ export async function readCodexTranscript(file: string): Promise<TranscriptDiges
         } else if (payload.type === 'task_complete' && typeof payload.last_agent_message === 'string' && payload.last_agent_message.trim()) {
           eventAgent = payload.last_agent_message.trim();
         } else if (payload.type === 'token_count') {
-          const total = asRecord(asRecord(payload.info)?.total_token_usage);
+          const info = asRecord(payload.info);
+          const total = asRecord(info?.total_token_usage);
+          // token_count can repeat with unchanged totals (rate-limit updates); a turn is a growth in the total.
+          const totalTokens = asNumber(total?.total_tokens);
+          if (totalTokens !== null && totalTokens > lastTotal) {
+            lastTotal = totalTokens;
+            tracker.turn(asNumber(asRecord(info?.last_token_usage)?.input_tokens));
+          }
           if (total) {
             usage = {
               // OpenAI semantics: input_tokens already includes cached_input_tokens.
@@ -90,6 +101,13 @@ export async function readCodexTranscript(file: string): Promise<TranscriptDiges
           }
         }
         return;
+      }
+
+      // Edits: the apply_patch tool, or apply_patch run through the shell tool. Usage for the call
+      // arrives after it, so marking here counts the calls before this one as onboarding.
+      if (payload.type === 'custom_tool_call' || payload.type === 'function_call') {
+        const args = typeof payload.arguments === 'string' ? payload.arguments : typeof payload.input === 'string' ? payload.input : '';
+        if (payload.name === 'apply_patch' || args.includes('apply_patch')) tracker.edit();
       }
 
       if (payload.type === 'message' && payload.role === 'user') {
@@ -114,6 +132,7 @@ export async function readCodexTranscript(file: string): Promise<TranscriptDiges
     userPromptCount: prompts.count,
     lastAgentMessage: eventAgent ?? itemAgent,
     usage,
+    turns: tracker.stats(),
     warnings,
   };
 }

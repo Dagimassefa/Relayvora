@@ -129,6 +129,10 @@ export const Checkpoint = z
       outputTokens: z.number().int().nonnegative().nullable(),
       costUsd: z.number().nonnegative().nullable(),
       note: z.string().nullable().default(null),
+      /** Input context of the last model call: what each further turn in the source session would carry. */
+      contextTokens: z.number().int().nonnegative().nullable().default(null),
+      /** Model calls in the source session so far. */
+      turns: z.number().int().nonnegative().nullable().default(null),
     }),
     warnings: z.array(z.string()).default([]),
   })

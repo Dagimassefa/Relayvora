@@ -1,5 +1,6 @@
 import {
   PromptCollector,
+  TurnTracker,
   asNumber,
   asRecord,
   forEachJsonlRecord,
@@ -66,19 +67,27 @@ function usageFromCostState(record: Record<string, unknown>): TranscriptUsage | 
   };
 }
 
-const PREFILTER = /"type"\s*:\s*"(user|assistant|ai-title|cost-state)"/;
+/** Claude Code tools that change files; the first call using one ends onboarding. */
+const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
+
+const PREFILTER =/"type"\s*:\s*"(user|assistant|ai-title|cost-state)"/;
 
 export async function readClaudeTranscript(file: string): Promise<TranscriptDigest> {
   const prompts = new PromptCollector();
   let title: string | null = null;
   let lastAgentMessage: string | null = null;
   let usage: TranscriptUsage | null = null;
+  const tracker = new TurnTracker();
+  // Claude Code writes one record per content block, each repeating the call's usage: keep one per message id.
+  const calls = new Map<string, Record<string, unknown>>();
+  const editCalls = new Set<string>();
 
   const stats = await forEachJsonlRecord(
     file,
     (value) => {
       const record = asRecord(value);
       if (!record || record.isSidechain === true) return;
+      tracker.seen(record.timestamp);
       const message = asRecord(record.message);
       switch (record.type) {
         case 'user':
@@ -87,9 +96,16 @@ export async function readClaudeTranscript(file: string): Promise<TranscriptDige
             if (text) prompts.add(text);
           }
           break;
-        case 'assistant':
-          if (message) lastAgentMessage = assistantText(message) ?? lastAgentMessage;
+        case 'assistant': {
+          if (!message) break;
+          lastAgentMessage = assistantText(message) ?? lastAgentMessage;
+          const callUsage = asRecord(message.usage);
+          const id = typeof message.id === 'string' ? message.id : typeof record.requestId === 'string' ? record.requestId : null;
+          if (callUsage && id) calls.set(id, callUsage);
+          const content = Array.isArray(message.content) ? message.content : [];
+          if (id && content.some((c) => asRecord(c)?.type === 'tool_use' && EDIT_TOOLS.has(String(asRecord(c)?.name)))) editCalls.add(id);
           break;
+        }
         case 'ai-title':
           if (typeof record.aiTitle === 'string' && record.aiTitle.trim()) title = record.aiTitle.trim();
           break;
@@ -100,6 +116,30 @@ export async function readClaudeTranscript(file: string): Promise<TranscriptDige
     },
     PREFILTER,
   );
+
+  // Context of a call = uncached input + cache reads + cache writes (Anthropic reports them separately).
+  let input = 0;
+  let cached = 0;
+  let output = 0;
+  for (const [id, u] of calls) {
+    if (editCalls.has(id)) tracker.edit();
+    const read = asNumber(u.cache_read_input_tokens) ?? 0;
+    const context = (asNumber(u.input_tokens) ?? 0) + read + (asNumber(u.cache_creation_input_tokens) ?? 0);
+    tracker.turn(context);
+    input += context;
+    cached += read;
+    output += asNumber(u.output_tokens) ?? 0;
+  }
+  // Claude Code writes its cost summary only at certain points; until then, sum the per-call usage.
+  if (!usage && calls.size > 0) {
+    usage = {
+      inputTokens: input,
+      cachedInputTokens: cached,
+      outputTokens: output,
+      costUsd: null,
+      note: 'Summed from per-call usage in the Claude Code transcript; no cost recorded yet.',
+    };
+  }
 
   const warnings: string[] = [];
   if (stats.parseErrors > 0) warnings.push(`Claude transcript: ${stats.parseErrors} unparseable line(s) skipped`);
@@ -112,6 +152,7 @@ export async function readClaudeTranscript(file: string): Promise<TranscriptDige
     userPromptCount: prompts.count,
     lastAgentMessage,
     usage,
+    turns: tracker.stats(),
     warnings,
   };
 }

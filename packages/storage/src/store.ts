@@ -46,6 +46,30 @@ export interface CheckpointRow {
   createdAt: string;
 }
 
+export interface ReceivingUsage {
+  provider: string;
+  sessionId: string;
+  inputTokens: number | null;
+  cachedInputTokens: number | null;
+  outputTokens: number | null;
+  costUsd: number | null;
+  firstContextTokens: number | null;
+  lastContextTokens: number | null;
+  turns: number | null;
+  durationMs: number | null;
+}
+
+export interface MeasuredRelay {
+  checkpointId: string;
+  sourceProvider: string;
+  targetProvider: string;
+  sourceContextTokens: number;
+  receivingFirstContextTokens: number;
+  receivingInputTokens: number | null;
+  receivingCostUsd: number | null;
+  receivingTurns: number | null;
+}
+
 export interface ActivityStats {
   checkpoints: number;
   projects: number;
@@ -242,12 +266,88 @@ export class Store {
       if (cp.usage.source !== 'unavailable') {
         this.db
           .prepare(
-            `INSERT INTO usage_events (project_id, checkpoint_id, provider, source, input_tokens, output_tokens, cost_usd, recorded_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO usage_events (project_id, checkpoint_id, provider, source, role, session_id, input_tokens,
+               cached_input_tokens, output_tokens, cost_usd, context_tokens, turns, recorded_at)
+             VALUES (?, ?, ?, ?, 'source', ?, ?, ?, ?, ?, ?, ?, ?)`,
           )
-          .run(projectId, cp.id, cp.source.provider, cp.usage.source, cp.usage.inputTokens, cp.usage.outputTokens, cp.usage.costUsd, now());
+          .run(
+            projectId,
+            cp.id,
+            cp.source.provider,
+            cp.usage.source,
+            cp.source.sessionId,
+            cp.usage.inputTokens,
+            cp.usage.cachedInputTokens,
+            cp.usage.outputTokens,
+            cp.usage.costUsd,
+            cp.usage.contextTokens,
+            cp.usage.turns,
+            now(),
+          );
       }
     });
+  }
+
+  /** Fills in the source session's context size for a checkpoint recorded before it was captured. */
+  saveSourceContext(projectId: string | null, checkpointId: string, provider: string, contextTokens: number, turns: number | null): void {
+    const updated = this.db
+      .prepare(`UPDATE usage_events SET context_tokens = ?, turns = COALESCE(turns, ?) WHERE checkpoint_id = ? AND role = 'source'`)
+      .run(contextTokens, turns, checkpointId);
+    if (Number(updated.changes) === 0) {
+      this.db
+        .prepare(
+          `INSERT INTO usage_events (project_id, checkpoint_id, provider, source, role, context_tokens, turns, recorded_at)
+           VALUES (?, ?, ?, 'provider-reported', 'source', ?, ?, ?)`,
+        )
+        .run(projectId, checkpointId, provider, contextTokens, turns, now());
+    }
+  }
+
+  /** Records (or replaces) the usage of the session that continued from a checkpoint. */
+  saveReceivingUsage(projectId: string | null, checkpointId: string, u: ReceivingUsage): void {
+    this.transaction(() => {
+      this.db.prepare(`DELETE FROM usage_events WHERE checkpoint_id = ? AND role = 'receiving'`).run(checkpointId);
+      this.db
+        .prepare(
+          `INSERT INTO usage_events (project_id, checkpoint_id, provider, source, role, session_id, input_tokens,
+             cached_input_tokens, output_tokens, cost_usd, context_tokens, first_context_tokens, turns, duration_ms, recorded_at)
+           VALUES (?, ?, ?, 'provider-reported', 'receiving', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          projectId,
+          checkpointId,
+          u.provider,
+          u.sessionId,
+          u.inputTokens,
+          u.cachedInputTokens,
+          u.outputTokens,
+          u.costUsd,
+          u.lastContextTokens,
+          u.firstContextTokens,
+          u.turns,
+          u.durationMs,
+          now(),
+        );
+    });
+  }
+
+  /**
+   * Relays where both sides were measured: the source session's last-turn context and the receiving
+   * session's first-turn context, both provider-reported.
+   */
+  measuredRelays(projectId?: string): MeasuredRelay[] {
+    const where = projectId ? 'AND s.project_id = ?' : '';
+    return this.db
+      .prepare(
+        `SELECT s.checkpoint_id AS checkpointId, s.provider AS sourceProvider, r.provider AS targetProvider,
+                s.context_tokens AS sourceContextTokens, r.first_context_tokens AS receivingFirstContextTokens,
+                r.input_tokens AS receivingInputTokens, r.cost_usd AS receivingCostUsd, r.turns AS receivingTurns
+         FROM usage_events s
+         JOIN usage_events r ON r.checkpoint_id = s.checkpoint_id AND r.role = 'receiving'
+         WHERE s.role = 'source' AND s.context_tokens IS NOT NULL AND r.first_context_tokens IS NOT NULL ${where}
+         ORDER BY r.recorded_at DESC`,
+      )
+      .all(...(projectId ? [projectId] : [])) as unknown as MeasuredRelay[];
   }
 
   /** Finds a checkpoint by full id or unique prefix. Throws on ambiguity or a corrupt body. */

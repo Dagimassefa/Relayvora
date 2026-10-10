@@ -183,3 +183,60 @@ describe('session commits', () => {
     expect(off.checkpoint.evidence.some((e) => e.type === 'git-commit')).toBe(false);
   });
 });
+
+describe('relay report', () => {
+  it('finds the receiving session by checkpoint id and compares context per turn', async () => {
+    // Give the Codex source session per-turn usage: last turn carried 120k tokens.
+    const rollout = fs.readdirSync(path.join(home, 'codex', 'sessions', '2026', '10', '01'))[0]!;
+    fs.appendFileSync(
+      path.join(home, 'codex', 'sessions', '2026', '10', '01', rollout),
+      JSON.stringify({ timestamp: '2026-10-01T10:05:00Z', type: 'event_msg', payload: { type: 'token_count', info: { total_token_usage: { input_tokens: 300_000, output_tokens: 900, total_tokens: 300_900 }, last_token_usage: { input_tokens: 120_000 } } } }) + '\n',
+    );
+    const { checkpoint } = await createCheckpoint(ctx(), { from: 'codex', to: 'claude', verify: [node('process.exit(1)')] });
+    expect(checkpoint.usage).toMatchObject({ contextTokens: 120_000, turns: 1 });
+
+    const { runReport } = await import('../src/commands/report.js');
+    const before = await runReport(ctx());
+    expect(before.receiving).toBeNull();
+    expect(before.notes.join()).toMatch(/No session mentioning/);
+
+    // The receiving Claude session: started after the checkpoint, first prompt is the launch pointer.
+    const later = (s: number) => new Date(Date.parse(checkpoint.createdAt) + s * 1000).toISOString();
+    const dir = path.join(home, 'claude', 'projects', 'p');
+    fs.mkdirSync(dir, { recursive: true });
+    const call = (id: string, s: number, ctxTokens: number) =>
+      JSON.stringify({ type: 'assistant', cwd: project, sessionId: 'recv-1', timestamp: later(s), message: { id, content: [{ type: 'text', text: 'ok' }], usage: { input_tokens: ctxTokens, output_tokens: 10 } } });
+    fs.writeFileSync(
+      path.join(dir, 'recv-1.jsonl'),
+      [
+        JSON.stringify({ type: 'user', cwd: project, sessionId: 'recv-1', timestamp: later(5), message: { role: 'user', content: `Continue the task described in .agentrelay/handoffs/${checkpoint.id}.md` } }),
+        call('m1', 10, 30_000),
+        call('m2', 70, 36_000),
+      ].join('\n'),
+    );
+
+    const report = await runReport(ctx(), checkpoint.id, { reverify: true });
+    expect(report.receiving).toMatchObject({ provider: 'claude', sessionId: 'recv-1', turns: 2, firstContextTokens: 30_000, durationMs: 65_000 });
+    expect(report.contextReduction).toBeCloseTo(0.75);
+    expect(report.checks.atCheckpoint).toEqual([expect.objectContaining({ status: 'failed', exitCode: 1 })]);
+    expect(report.checks.now).toEqual([expect.objectContaining({ status: 'failed', exitCode: 1 })]);
+
+    const { Store } = await import('@agentrelay/storage');
+    const store = Store.openInDir(ctx().dataDir);
+    expect(store.measuredRelays()).toEqual([expect.objectContaining({ sourceContextTokens: 120_000, receivingFirstContextTokens: 30_000 })]);
+    store.close();
+  });
+
+  it('--verify auto runs the project scripts', async () => {
+    fs.writeFileSync(
+      path.join(project, 'package.json'),
+      JSON.stringify({ name: 'p', scripts: { lint: 'node -e "process.exit(0)"', test: 'node -e "process.exit(3)"' } }),
+    );
+    const r = await createCheckpoint(ctx(), { goal: 'x', verify: ['auto'] });
+    const cmds = r.checkpoint.evidence.filter((e) => e.type === 'command' || e.type === 'test');
+    expect(cmds.map((e) => [e.command, e.status])).toEqual([
+      ['npm run lint', 'passed'],
+      ['npm run test', 'failed'],
+    ]);
+  });
+});

@@ -1,0 +1,223 @@
+{
+  "meta": {
+    "startedAt": "2026-10-10T05:49:51.624Z",
+    "claudeVersion": "2.1.295 (Claude Code)",
+    "reps": 2,
+    "tasks": [
+      "small-calculator"
+    ],
+    "rescoredAt": "2026-10-10T05:51:46.610Z"
+  },
+  "summary": {
+    "small-calculator": {
+      "normal": {
+        "runs": 2,
+        "contextAtHandoff": 40052,
+        "stepBCost": 0.1271177,
+        "stepBInput": 148353,
+        "stepBOutput": 3312,
+        "stepBCalls": 3.5,
+        "stepBAvgContext": 42359,
+        "stepBSeconds": 30.114,
+        "totalCost": 0.2684937,
+        "hiddenPassRate": 0.9615384615384616
+      },
+      "relay": {
+        "runs": 2,
+        "contextAtHandoff": 40207.5,
+        "stepBCost": 0.22054685000000002,
+        "stepBInput": 186902,
+        "stepBOutput": 3328,
+        "stepBCalls": 4.5,
+        "stepBAvgContext": 41539,
+        "stepBSeconds": 29.4035,
+        "totalCost": 0.36907884999999996,
+        "hiddenPassRate": 1
+      },
+      "delta": {
+        "stepBCost": 0.7349814384621498,
+        "stepBInput": 0.2598464473249614,
+        "stepBAvgContext": -0.01935834179277131,
+        "totalCost": 0.37462759833843384
+      }
+    }
+  },
+  "results": [
+    {
+      "task": "small-calculator",
+      "arm": "normal",
+      "rep": 1,
+      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\agentrelay-bench\\2026-10-10T05-49-51-624Z\\small-calculator-normal-1",
+      "stepA": {
+        "costUsd": 0.1483409,
+        "inputTokens": 155072,
+        "cacheReadTokens": 142474,
+        "cacheWriteTokens": 12590,
+        "outputTokens": 948,
+        "turns": 6,
+        "durationMs": 12920,
+        "calls": 4,
+        "firstCallContext": 36618,
+        "avgCallContext": 38768,
+        "maxCallContext": 40373,
+        "isError": false
+      },
+      "contextAtHandoff": 40373,
+      "stepB": {
+        "costUsd": 0.12231360000000002,
+        "inputTokens": 170218,
+        "cacheReadTokens": 166428,
+        "cacheWriteTokens": 3782,
+        "outputTokens": 2937,
+        "turns": 6,
+        "durationMs": 27905,
+        "calls": 4,
+        "firstCallContext": 40697,
+        "avgCallContext": 42555,
+        "maxCallContext": 44155,
+        "isError": false,
+        "cumulativeCostUsd": 0.2706545
+      },
+      "hidden": {
+        "passed": 12,
+        "total": 13
+      },
+      "totalCostUsd": 0.2706545
+    },
+    {
+      "task": "small-calculator",
+      "arm": "relay",
+      "rep": 1,
+      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\agentrelay-bench\\2026-10-10T05-49-51-624Z\\small-calculator-relay-1",
+      "stepA": {
+        "costUsd": 0.1376981,
+        "inputTokens": 115276,
+        "cacheReadTokens": 103200,
+        "cacheWriteTokens": 12070,
+        "outputTokens": 1017,
+        "turns": 5,
+        "durationMs": 12627,
+        "calls": 3,
+        "firstCallContext": 36617,
+        "avgCallContext": 38425,
+        "maxCallContext": 39853,
+        "isError": false
+      },
+      "contextAtHandoff": 39853,
+      "relay": {
+        "checkpointId": "cp-20261010-055011-3c92",
+        "handoffTokens": 822,
+        "launchMode": "inline",
+        "repoFresh": true,
+        "agentRelayMs": 2281
+      },
+      "stepB": {
+        "costUsd": 0.2200584,
+        "inputTokens": 166343,
+        "cacheReadTokens": 151301,
+        "cacheWriteTokens": 15034,
+        "outputTokens": 3461,
+        "turns": 7,
+        "durationMs": 30171,
+        "calls": 4,
+        "firstCallContext": 38020,
+        "avgCallContext": 41586,
+        "maxCallContext": 44475,
+        "isError": false
+      },
+      "hidden": {
+        "passed": 13,
+        "total": 13
+      },
+      "totalCostUsd": 0.3577565
+    },
+    {
+      "task": "small-calculator",
+      "arm": "normal",
+      "rep": 2,
+      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\agentrelay-bench\\2026-10-10T05-49-51-624Z\\small-calculator-normal-2",
+      "stepA": {
+        "costUsd": 0.1344111,
+        "inputTokens": 115094,
+        "cacheReadTokens": 103140,
+        "cacheWriteTokens": 11948,
+        "outputTokens": 902,
+        "turns": 5,
+        "durationMs": 12197,
+        "calls": 3,
+        "firstCallContext": 36618,
+        "avgCallContext": 38365,
+        "maxCallContext": 39731,
+        "isError": false
+      },
+      "contextAtHandoff": 39731,
+      "stepB": {
+        "costUsd": 0.13192179999999998,
+        "inputTokens": 126488,
+        "cacheReadTokens": 122269,
+        "cacheWriteTokens": 4213,
+        "outputTokens": 3687,
+        "turns": 7,
+        "durationMs": 32323,
+        "calls": 3,
+        "firstCallContext": 40066,
+        "avgCallContext": 42163,
+        "maxCallContext": 43944,
+        "isError": false,
+        "cumulativeCostUsd": 0.2663329
+      },
+      "hidden": {
+        "passed": 13,
+        "total": 13
+      },
+      "totalCostUsd": 0.2663329
+    },
+    {
+      "task": "small-calculator",
+      "arm": "relay",
+      "rep": 2,
+      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\agentrelay-bench\\2026-10-10T05-49-51-624Z\\small-calculator-relay-2",
+      "stepA": {
+        "costUsd": 0.1593659,
+        "inputTokens": 155326,
+        "cacheReadTokens": 142539,
+        "cacheWriteTokens": 12779,
+        "outputTokens": 1423,
+        "turns": 6,
+        "durationMs": 17089,
+        "calls": 4,
+        "firstCallContext": 36618,
+        "avgCallContext": 38832,
+        "maxCallContext": 40562,
+        "isError": false
+      },
+      "contextAtHandoff": 40562,
+      "relay": {
+        "checkpointId": "cp-20261010-055015-89aa",
+        "handoffTokens": 820,
+        "launchMode": "inline",
+        "repoFresh": true,
+        "agentRelayMs": 2306
+      },
+      "stepB": {
+        "costUsd": 0.22103530000000002,
+        "inputTokens": 207461,
+        "cacheReadTokens": 192665,
+        "cacheWriteTokens": 14786,
+        "outputTokens": 3195,
+        "turns": 7,
+        "durationMs": 28636,
+        "calls": 5,
+        "firstCallContext": 38018,
+        "avgCallContext": 41492,
+        "maxCallContext": 44227,
+        "isError": false
+      },
+      "hidden": {
+        "passed": 13,
+        "total": 13
+      },
+      "totalCostUsd": 0.3804012
+    }
+  ]
+}

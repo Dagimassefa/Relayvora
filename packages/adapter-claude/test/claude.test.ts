@@ -65,3 +65,39 @@ describe('claudeAdapter.readTranscript', () => {
     expect(t.warnings.join()).toMatch(/no user prompts recognised/);
   });
 });
+
+describe('Claude turn stats', () => {
+  it('counts each model call once and measures context per call', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ar-claude-turns-'));
+    const file = path.join(dir, 's.jsonl');
+    const call = (id: string, ts: string, input: number, read: number, write: number, type = 'text') =>
+      JSON.stringify({
+        type: 'assistant',
+        timestamp: ts,
+        message: { id, role: 'assistant', content: [{ type, text: 'x' }], usage: { input_tokens: input, cache_read_input_tokens: read, cache_creation_input_tokens: write, output_tokens: 7 } },
+      });
+    fs.writeFileSync(
+      file,
+      [
+        JSON.stringify({ type: 'user', timestamp: '2026-10-10T10:00:00Z', message: { role: 'user', content: 'continue cp-1' } }),
+        call('m1', '2026-10-10T10:00:05Z', 100, 0, 900),
+        call('m1', '2026-10-10T10:00:06Z', 100, 0, 900, 'tool_use'), // same call, second content block
+        call('m2', '2026-10-10T10:01:00Z', 50, 1000, 200),
+        JSON.stringify({ type: 'assistant', timestamp: '2026-10-10T10:01:00Z', message: { id: 'm2', content: [{ type: 'tool_use', name: 'Edit', input: {} }], usage: { input_tokens: 50, cache_read_input_tokens: 1000, cache_creation_input_tokens: 200, output_tokens: 7 } } }),
+      ].join('\n'),
+    );
+    const t = await claudeAdapter.readTranscript!(file);
+    expect(t.turns).toEqual({
+      count: 2,
+      firstAt: '2026-10-10T10:00:00Z',
+      lastAt: '2026-10-10T10:01:00Z',
+      firstContextTokens: 1000,
+      lastContextTokens: 1250,
+      // m2 edited a file, so onboarding is the one call before it.
+      callsBeforeFirstEdit: 1,
+      tokensBeforeFirstEdit: 1000,
+    });
+    // No cost-state record yet: usage is summed from the calls.
+    expect(t.usage).toMatchObject({ inputTokens: 2250, cachedInputTokens: 1000, outputTokens: 14, costUsd: null });
+  });
+});

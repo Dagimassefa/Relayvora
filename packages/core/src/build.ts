@@ -312,6 +312,8 @@ export function buildCheckpoint(input: BuildCheckpointInput): Checkpoint {
           outputTokens: usage.outputTokens,
           costUsd: usage.costUsd,
           note: usage.note,
+          contextTokens: input.transcript?.turns?.lastContextTokens ?? null,
+          turns: input.transcript?.turns?.count ?? null,
         }
       : { source: 'unavailable', inputTokens: null, outputTokens: null, costUsd: null },
     warnings,

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runCommand, type AgentAdapter } from '@agentrelay/core';
 import { createCheckpoint } from '../src/checkpoint-service.js';
 import { createContext, type CliContext } from '../src/context.js';
-import { executeLaunch, planLaunch, pointerPrompt } from '../src/launch.js';
+import { checkFreshness, executeLaunch, launchPrompt, planLaunch, pointerPrompt } from '../src/launch.js';
 
 let home: string;
 let project: string;
@@ -49,13 +49,35 @@ async function checkpoint() {
 }
 
 describe('planLaunch', () => {
-  it('points the agent at the handoff file and runs it in the project folder', async () => {
+  it('sends the handoff itself, says the repository was re-checked, and runs in the project folder', async () => {
     const cp = await checkpoint();
     const plan = await planLaunch(ctx, cp, null);
-    expect(plan).toMatchObject({ target: 'fake', executable: process.execPath, cwd: cp.project.root, version: 'fake 1.0' });
-    expect(plan.prompt).toBe(pointerPrompt(cp, plan.handoffFile));
-    expect(plan.prompt).toContain(`.agentrelay/handoffs/${cp.id}.md`);
+    expect(plan).toMatchObject({ target: 'fake', executable: process.execPath, cwd: cp.project.root, version: 'fake 1.0', mode: 'inline' });
+    expect(plan.freshness).toEqual({ checked: true, fresh: true, differences: [] });
+    expect(plan.prompt).toContain('AgentRelay re-checked the repository just before starting this session');
+    expect(plan.prompt).toContain(fs.readFileSync(plan.handoffFile, 'utf8'));
     expect(plan.args.at(-1)).toBe(plan.prompt);
+  });
+
+  it('falls back to a pointer when the command line cannot carry the handoff', async () => {
+    const cp = await checkpoint();
+    const plan = await planLaunch(ctx, cp, null);
+    const { prompt, mode } = launchPrompt(cp, plan.handoffFile, plan.freshness, false);
+    expect(mode).toBe('pointer');
+    expect(prompt.startsWith(pointerPrompt(cp, plan.handoffFile))).toBe(true);
+    expect(prompt).toContain(`.agentrelay/handoffs/${cp.id}.md`);
+    expect(prompt).toContain('re-checked');
+  });
+
+  it('tells the agent what changed when the repository moved after the checkpoint', async () => {
+    fs.writeFileSync(path.join(project, 'a.txt'), 'one\n');
+    const cp = await checkpoint();
+    fs.writeFileSync(path.join(project, 'a.txt'), 'two\n');
+    fs.writeFileSync(path.join(project, 'b.txt'), 'new\n');
+    const f = await checkFreshness(cp);
+    expect(f.fresh).toBe(false);
+    expect(f.differences).toEqual(['a.txt changed', 'b.txt newly changed']);
+    expect(launchPrompt(cp, (await planLaunch(ctx, cp, null)).handoffFile, f, true).prompt).toContain('Run git status once');
   });
 
   it('recreates a deleted handoff file but keeps an edited one', async () => {

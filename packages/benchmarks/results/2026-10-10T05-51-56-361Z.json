@@ -1,0 +1,139 @@
+{
+  "meta": {
+    "startedAt": "2026-10-10T05:51:56.361Z",
+    "claudeVersion": "2.1.295 (Claude Code)",
+    "reps": 1,
+    "tasks": [
+      "large-inventory"
+    ]
+  },
+  "summary": {
+    "large-inventory": {
+      "normal": {
+        "runs": 1,
+        "contextAtHandoff": 159827,
+        "stepBCost": 0.3061094000000004,
+        "stepBInput": 818760,
+        "stepBOutput": 4494,
+        "stepBCalls": 5,
+        "stepBAvgContext": 163752,
+        "stepBSeconds": 41.57,
+        "totalCost": 2.324205100000001,
+        "hiddenPassRate": 1
+      },
+      "relay": {
+        "runs": 1,
+        "contextAtHandoff": 162936,
+        "stepBCost": 0.3083287,
+        "stepBInput": 327318,
+        "stepBOutput": 4096,
+        "stepBCalls": 7,
+        "stepBAvgContext": 46760,
+        "stepBSeconds": 37.244,
+        "totalCost": 2.4180490999999997,
+        "hiddenPassRate": 1
+      },
+      "delta": {
+        "stepBCost": 0.007250022377619204,
+        "stepBInput": -0.6002271727978895,
+        "stepBAvgContext": -0.7144462357711662,
+        "totalCost": 0.04037681528192107
+      }
+    }
+  },
+  "results": [
+    {
+      "task": "large-inventory",
+      "arm": "relay",
+      "rep": 1,
+      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\agentrelay-bench\\2026-10-10T05-51-56-361Z\\large-inventory-relay-1",
+      "stepA": {
+        "costUsd": 2.1097203999999996,
+        "cumulativeCostUsd": 2.1097203999999996,
+        "inputTokens": 2976308,
+        "cacheReadTokens": 2841105,
+        "cacheWriteTokens": 135153,
+        "outputTokens": 22997,
+        "turns": 65,
+        "durationMs": 215621,
+        "calls": 25,
+        "firstCallContext": 36626,
+        "avgCallContext": 119052,
+        "maxCallContext": 162936,
+        "isError": false
+      },
+      "contextAtHandoff": 162936,
+      "relay": {
+        "checkpointId": "cp-20261010-055539-4281",
+        "handoffTokens": 3066,
+        "launchMode": "inline",
+        "repoFresh": true,
+        "agentRelayMs": 2399
+      },
+      "stepB": {
+        "costUsd": 0.3083287,
+        "cumulativeCostUsd": 0.3083287,
+        "inputTokens": 327318,
+        "cacheReadTokens": 306755,
+        "cacheWriteTokens": 20549,
+        "outputTokens": 4096,
+        "turns": 10,
+        "durationMs": 37244,
+        "calls": 7,
+        "firstCallContext": 41370,
+        "avgCallContext": 46760,
+        "maxCallContext": 49990,
+        "isError": false,
+        "costCheck": "usage covers this step only"
+      },
+      "hidden": {
+        "passed": 7,
+        "total": 7
+      },
+      "totalCostUsd": 2.4180490999999997
+    },
+    {
+      "task": "large-inventory",
+      "arm": "normal",
+      "rep": 1,
+      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\agentrelay-bench\\2026-10-10T05-51-56-361Z\\large-inventory-normal-1",
+      "stepA": {
+        "costUsd": 2.0180957000000004,
+        "cumulativeCostUsd": 2.0180957000000004,
+        "inputTokens": 2405028,
+        "cacheReadTokens": 2272944,
+        "cacheWriteTokens": 132044,
+        "outputTokens": 25343,
+        "turns": 60,
+        "durationMs": 220265,
+        "calls": 20,
+        "firstCallContext": 36624,
+        "avgCallContext": 120251,
+        "maxCallContext": 159827,
+        "isError": false
+      },
+      "contextAtHandoff": 159827,
+      "stepB": {
+        "costUsd": 0.3061094000000004,
+        "cumulativeCostUsd": 2.324205100000001,
+        "inputTokens": 818760,
+        "cacheReadTokens": 812027,
+        "cacheWriteTokens": 6723,
+        "outputTokens": 4494,
+        "turns": 8,
+        "durationMs": 41570,
+        "calls": 5,
+        "firstCallContext": 160930,
+        "avgCallContext": 163752,
+        "maxCallContext": 166550,
+        "isError": false,
+        "costCheck": "modelUsage is cumulative (3084971 vs 812027 cache-read tokens)"
+      },
+      "hidden": {
+        "passed": 7,
+        "total": 7
+      },
+      "totalCostUsd": 2.324205100000001
+    }
+  ]
+}

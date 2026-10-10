@@ -3,6 +3,7 @@ import path from 'node:path';
 import { AgentRelayError, ExitCode, runInteractive, sha256, type AgentAdapter, type Checkpoint } from '@agentrelay/core';
 import { confirmOrAbort } from './confirm.js';
 import { type CliContext, openStore, selectAdapters } from './context.js';
+import { collectGitSnapshot } from '@agentrelay/git';
 import { handoffPath } from './project.js';
 
 /**
@@ -16,6 +17,66 @@ export function pointerPrompt(cp: Checkpoint, handoffFile: string): string {
   return `Continue the task described in ${rel} (an AgentRelay handoff from ${from}). Read that file first, verify its agent-reported and inferred claims, then carry on.`;
 }
 
+export interface Freshness {
+  /** False when there was nothing to compare (not a Git repository). */
+  checked: boolean;
+  fresh: boolean;
+  /** Human-readable differences, e.g. "HEAD moved", "src/a.ts changed". */
+  differences: string[];
+}
+
+/**
+ * Compares the repository now with the state recorded in the checkpoint: HEAD, branch, and each
+ * changed file's status and content hash. When nothing moved, the launched agent can skip re-checking.
+ */
+export async function checkFreshness(cp: Checkpoint): Promise<Freshness> {
+  if (!cp.project.isGitRepo) return { checked: false, fresh: false, differences: [] };
+  const now = await collectGitSnapshot(cp.project.root);
+  const differences: string[] = [];
+  if (now.head !== cp.project.gitHead) differences.push('HEAD moved');
+  if (now.branch !== cp.project.branch) differences.push('branch changed');
+
+  const recorded = new Map(cp.project.dirtyFiles.map((d) => [d.path, d.status]));
+  const hashes = new Map(cp.evidence.filter((e) => e.path && (e.type === 'git-diff' || e.type === 'file')).map((e) => [e.path!, e.sha256 ?? null]));
+  const current = new Map(now.files.map((f) => [f.path, f]));
+  for (const [file, status] of recorded) {
+    const c = current.get(file);
+    if (!c) differences.push(`${file} no longer changed`);
+    else if (c.status !== status) differences.push(`${file} status changed`);
+    else if (hashes.get(file) && c.sha256 && hashes.get(file) !== c.sha256) differences.push(`${file} changed`);
+  }
+  for (const file of current.keys()) if (!recorded.has(file)) differences.push(`${file} newly changed`);
+  return { checked: true, fresh: differences.length === 0, differences };
+}
+
+function freshnessSentence(f: Freshness): string {
+  if (!f.checked) return '';
+  if (f.fresh) {
+    return 'AgentRelay re-checked the repository just before starting this session: HEAD, branch and uncommitted changes still match the handoff, so you do not need to re-check them.';
+  }
+  const shown = f.differences.slice(0, 5).join('; ');
+  return `The repository changed after the handoff was written (${shown}${f.differences.length > 5 ? '; ...' : ''}). Run git status once before relying on its file list.`;
+}
+
+// Command-line ceilings: Windows CreateProcess allows ~32K characters in total, cmd.exe 8K.
+const INLINE_LIMIT = process.platform === 'win32' ? 24_000 : 100_000;
+
+/**
+ * The launch message. When the command line allows it, the handoff text itself goes in, which saves
+ * the agent a file read; otherwise a short pointer to the file. Either way the file as it is on disk
+ * now is used, so edits made after the checkpoint are honoured.
+ */
+export function launchPrompt(cp: Checkpoint, handoffFile: string, freshness: Freshness, inlineAllowed: boolean): { prompt: string; mode: 'inline' | 'pointer' } {
+  const fresh = freshnessSentence(freshness);
+  const rel = path.relative(cp.project.root, handoffFile).split(path.sep).join('/');
+  const text = fs.readFileSync(handoffFile, 'utf8');
+  const from = cp.source.provider === 'manual' ? 'a previous session' : `a ${cp.source.provider} session`;
+  const intro = `You are continuing work from ${from}. The AgentRelay handoff below (also saved at ${rel}) describes the task, what is done and what is left.`;
+  const inline = `${[intro, fresh].filter(Boolean).join(' ')}\n\n${text}`;
+  if (inlineAllowed && inline.length <= INLINE_LIMIT) return { prompt: inline, mode: 'inline' };
+  return { prompt: [pointerPrompt(cp, handoffFile), fresh].filter(Boolean).join(' '), mode: 'pointer' };
+}
+
 export interface LaunchPlan {
   checkpointId: string;
   target: string;
@@ -27,6 +88,9 @@ export interface LaunchPlan {
   cwd: string;
   args: string[];
   prompt: string;
+  /** inline: the handoff text is in the launch message; pointer: the agent reads the file. */
+  mode: 'inline' | 'pointer';
+  freshness: Freshness;
   handoffFile: string;
 }
 
@@ -58,7 +122,10 @@ export async function planLaunch(ctx: CliContext, cp: Checkpoint, target: string
       ExitCode.NotFound,
     );
   }
-  const prompt = pointerPrompt(cp, handoffFile);
+  const freshness = await checkFreshness(cp);
+  // Batch files go through cmd.exe, which cannot carry a long multi-line argument safely.
+  const inlineAllowed = !(process.platform === 'win32' && /.(cmd|bat)$/i.test(probe.path));
+  const { prompt, mode } = launchPrompt(cp, handoffFile, freshness, inlineAllowed);
   return {
     checkpointId: cp.id,
     target: adapter.id,
@@ -70,6 +137,8 @@ export async function planLaunch(ctx: CliContext, cp: Checkpoint, target: string
     cwd: cp.project.root,
     args: adapter.launchArgs(prompt),
     prompt,
+    mode,
+    freshness,
     handoffFile,
   };
 }

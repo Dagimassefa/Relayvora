@@ -14,6 +14,7 @@ import { renderDoctor, runDoctor } from './commands/doctor.js';
 import { type ExportOptions, runExport } from './commands/export.js';
 import { renderHome, runHome } from './commands/home.js';
 import { renderInit, runInit } from './commands/init.js';
+import { renderReport, runReport } from './commands/report.js';
 import { renderSessions, runSessions } from './commands/sessions.js';
 import { copyToClipboard } from './clipboard.js';
 import { type CliContext, createContext, selectAdapters } from './context.js';
@@ -60,7 +61,7 @@ function addCheckpointOptions(cmd: Command): Command {
     .option('--pending <text>', 'remaining work; repeatable', collect)
     .option('--blocker <text>', 'a known blocker; repeatable', collect)
     .option('--decision <text>', 'a decision already made; repeatable', collect)
-    .option('--verify <command>', 'run a command (no shell) and record its exit code as evidence; repeatable', collect)
+    .option('--verify <command>', 'run a command (no shell) and record its exit code; "auto" runs the project typecheck/lint/test scripts; repeatable', collect)
     .option('--verify-timeout <seconds>', 'timeout per verification command', parsePositiveInt, 600)
     .option('--budget <tokens>', 'token budget for the handoff text (estimated tokens)', parsePositiveInt)
     .option('--no-transcript', 'do not read the session transcript')
@@ -140,13 +141,26 @@ async function launchWithUi(ctx: CliContext, cp: Checkpoint, target: string | nu
       '',
       `  ${label(t, 'agent')}${providerChip(t, plan.target)} ${t.bold(`${plan.displayName}${version}`)} ${t.dim(`(${where})`)}`,
       `  ${label(t, 'in')}${t.fg('cyan', plan.cwd)}`,
-      `  ${label(t, 'says')}${t.fg('orange', plan.prompt)}`,
+      `  ${label(t, 'repo')}${
+        !plan.freshness.checked
+          ? t.dim('not a Git repository; not re-checked')
+          : plan.freshness.fresh
+            ? `${statusIcon(t, 'ok')} ${t.dim('unchanged since the checkpoint (the agent is told it can skip re-checking)')}`
+            : `${statusIcon(t, 'warn')} ${t.fg('amber', `changed since the checkpoint: ${plan.freshness.differences.slice(0, 3).join('; ')}`)}`
+      }`,
+      `  ${label(t, 'sends')}${
+        plan.mode === 'inline'
+          ? `${t.bold('the handoff itself')} ${t.dim(`(${plan.prompt.length.toLocaleString('en-US')} chars, no file read needed)`)}`
+          : t.fg('orange', plan.prompt)
+      }`,
       '',
       '',
     ].join('\n'),
   );
   if (flags.dryRun) {
-    process.stderr.write(`  ${statusIcon(t, 'info')} ${t.dim('dry run, nothing launched:')} ${plan.executable} ${plan.args.map((a) => JSON.stringify(a)).join(' ')}\n\n`);
+    // The inlined handoff would flood the screen; show its size instead (the full text is in the file and in --json).
+    const shown = plan.args.map((a) => (a === plan.prompt && plan.mode === 'inline' ? `<handoff, ${a.length.toLocaleString('en-US')} chars>` : JSON.stringify(a)));
+    process.stderr.write(`  ${statusIcon(t, 'info')} ${t.dim('dry run, nothing launched:')} ${plan.executable} ${shown.join(' ')}\n\n`);
     return;
   }
   const result = await executeLaunch(ctx, plan, flags.yes === undefined ? {} : { yes: flags.yes });
@@ -329,6 +343,19 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
         return;
       }
       await launchWithUi(ctx, cp, flags.to ?? null, flags, ui);
+    });
+
+  program
+    .command('report [checkpoint]')
+    .description('measure a relay: the session that continued it, context per turn, and check results')
+    .option('--reverify', "re-run the checkpoint's verification commands now")
+    .action(async (id: string | undefined, flags: { reverify?: boolean }, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      const report = await runReport(ctx, id, {
+        ...(flags.reverify ? { reverify: true } : {}),
+        ...(opts.json ? {} : { progress: terminalProgress(ui.err, process.stderr) }),
+      });
+      emit(opts, report, (r) => renderReport(r, ui.out));
     });
 
   const config = program.command('config').description('inspect configuration');

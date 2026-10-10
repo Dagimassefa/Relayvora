@@ -4,6 +4,7 @@ import {
   AgentRelayError,
   ExitCode,
   buildCheckpoint,
+  detectVerifyCommands,
   canonicalPath,
   isWithin,
   newCheckpointId,
@@ -215,8 +216,26 @@ export async function createCheckpoint(ctx: CliContext, options: CreateCheckpoin
       extraWarnings.push('The session has no recorded start time, so commits made during it were not collected; use --commits-since.');
     }
 
+    // `--verify auto` expands to the project's own typecheck/lint/test commands.
+    const commands: string[] = [];
+    for (const v of verify) {
+      if (v.trim().toLowerCase() !== 'auto') {
+        commands.push(v);
+        continue;
+      }
+      const detected = await progress.step(
+        'Detecting checks',
+        async () => detectVerifyCommands(project.root, { env: ctx.env }),
+        (d) => (d.length ? { status: 'ok', detail: d.map((c) => c.command).join(' · ') } : { status: 'warn', detail: 'none found' }),
+      );
+      if (detected.length === 0) {
+        extraWarnings.push('--verify auto found no typecheck, lint or test command; pass --verify "<command>" explicitly.');
+      }
+      for (const c of detected) if (!commands.includes(c.command)) commands.push(c.command);
+    }
+
     const verifications: VerificationResult[] = [];
-    for (const command of verify) {
+    for (const command of commands) {
       const result = await progress.step(
         `Running ${command}`,
         () => runVerification(command, project.root, options.verifyTimeoutSec ?? 600),

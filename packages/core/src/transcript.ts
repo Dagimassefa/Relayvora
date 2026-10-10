@@ -1,3 +1,4 @@
+import type { TurnStats } from './snapshot.js';
 import fs from 'node:fs';
 import readline from 'node:readline';
 
@@ -74,6 +75,53 @@ export function stripInjectedBlocks(text: string, extraTags?: RegExp): string {
   let out = text.replace(SNAKE_CASE_BLOCK, '');
   if (extraTags) out = out.replace(extraTags, '');
   return out.trim();
+}
+
+/** Accumulates per-turn context sizes and the session's time span while streaming. */
+export class TurnTracker {
+  private count = 0;
+  private firstAt: string | null = null;
+  private lastAt: string | null = null;
+  private firstContext: number | null = null;
+  private lastContext: number | null = null;
+  private tokensSoFar = 0;
+  private editAt: { calls: number; tokens: number } | null = null;
+
+  /**
+   * Marks that the next counted call (or the current one, for formats that report usage after the
+   * call) edited a file. Only the first edit matters: everything before it is onboarding.
+   */
+  edit(): void {
+    this.editAt ??= { calls: this.count, tokens: this.tokensSoFar };
+  }
+
+  /** Any record with a timestamp widens the session's time span. */
+  seen(timestamp: unknown): void {
+    if (typeof timestamp !== 'string' || Number.isNaN(Date.parse(timestamp))) return;
+    if (this.firstAt === null || timestamp < this.firstAt) this.firstAt = timestamp;
+    if (this.lastAt === null || timestamp > this.lastAt) this.lastAt = timestamp;
+  }
+
+  turn(contextTokens: number | null): void {
+    this.count++;
+    if (contextTokens === null) return;
+    this.tokensSoFar += contextTokens;
+    if (this.firstContext === null) this.firstContext = contextTokens;
+    this.lastContext = contextTokens;
+  }
+
+  stats(): TurnStats | null {
+    if (this.count === 0 && this.firstAt === null) return null;
+    return {
+      count: this.count,
+      firstAt: this.firstAt,
+      lastAt: this.lastAt,
+      firstContextTokens: this.firstContext,
+      lastContextTokens: this.lastContext,
+      callsBeforeFirstEdit: this.editAt?.calls ?? null,
+      tokensBeforeFirstEdit: this.editAt?.tokens ?? null,
+    };
+  }
 }
 
 export function asRecord(value: unknown): Record<string, unknown> | undefined {

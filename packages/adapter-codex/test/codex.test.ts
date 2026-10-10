@@ -78,3 +78,25 @@ describe('cleanCodexUserText', () => {
     expect(cleanCodexUserText('make the <div> wrapper flex')).toBe('make the <div> wrapper flex');
   });
 });
+
+describe('Codex turn stats', () => {
+  it('counts a turn only when the cumulative total grows and takes context from last_token_usage', async () => {
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ar-codex-turns-')), 'rollout.jsonl');
+    const tc = (ts: string, total: number, last: number) =>
+      JSON.stringify({ timestamp: ts, type: 'event_msg', payload: { type: 'token_count', info: { total_token_usage: { input_tokens: total, total_tokens: total }, last_token_usage: { input_tokens: last } } } });
+    fs.writeFileSync(
+      file,
+      [
+        tc('2026-10-10T10:00:00Z', 20_000, 20_000),
+        tc('2026-10-10T10:00:01Z', 20_000, 20_000),
+        JSON.stringify({ timestamp: '2026-10-10T10:04:00Z', type: 'response_item', payload: { type: 'custom_tool_call', name: 'apply_patch', input: '*** Begin Patch' } }),
+        tc('2026-10-10T10:05:00Z', 60_000, 40_000),
+      ].join('\n'),
+    );
+    const t = await codexAdapter.readTranscript!(file);
+    expect(t.turns).toEqual({ count: 2, firstAt: '2026-10-10T10:00:00Z', lastAt: '2026-10-10T10:05:00Z', firstContextTokens: 20_000, lastContextTokens: 40_000, callsBeforeFirstEdit: 1, tokensBeforeFirstEdit: 20_000 });
+  });
+});

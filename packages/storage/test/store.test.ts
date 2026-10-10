@@ -122,7 +122,44 @@ describe('Store checkpoints', () => {
     const store = track(Store.open(':memory:', { migrate: false }));
     store.migrate(MIGRATIONS.slice(0, 1));
     expect(store.schemaVersion()).toBe(1);
-    expect(store.migrate().map((m) => m.version)).toEqual([2]);
+    expect(store.migrate().map((m) => m.version)).toEqual([2, 3]);
     expect(store.schemaVersion()).toBe(LATEST_SCHEMA_VERSION);
+  });
+});
+
+describe('Store relay measurement', () => {
+  const at = '2026-10-01T10:00:00.000Z';
+  const cp = (contextTokens: number | null) =>
+    parseCheckpoint({
+      schemaVersion: '0.1',
+      id: 'cp-m',
+      createdAt: at,
+      project: { root: '/work/demo', gitHead: null, branch: 'main', dirtyFiles: [] },
+      source: { provider: 'codex', sessionId: 's1', capturedAt: at },
+      task: { goal: { text: 'g', provenance: 'user-provided' } },
+      handoff: { targetProvider: 'claude', prompt: '#', contextFiles: [], budgetTokens: 4000 },
+      usage: { source: 'provider-reported', inputTokens: 1000, outputTokens: 10, costUsd: null, contextTokens, turns: 9 },
+    });
+  const receiving = { provider: 'claude', sessionId: 'r1', inputTokens: 500, cachedInputTokens: 400, outputTokens: 20, costUsd: 0.1, firstContextTokens: 40, lastContextTokens: 60, turns: 3, durationMs: 1000 };
+
+  it('pairs the source and receiving sides into a measured relay, replacing earlier measurements', () => {
+    const store = track(Store.open(':memory:'));
+    const project = store.upsertProject('/work/demo');
+    store.saveCheckpoint(cp(160), project.id);
+    expect(store.measuredRelays()).toEqual([]);
+    store.saveReceivingUsage(project.id, 'cp-m', { ...receiving, firstContextTokens: 99 });
+    store.saveReceivingUsage(project.id, 'cp-m', receiving);
+    expect(store.measuredRelays()).toEqual([
+      { checkpointId: 'cp-m', sourceProvider: 'codex', targetProvider: 'claude', sourceContextTokens: 160, receivingFirstContextTokens: 40, receivingInputTokens: 500, receivingCostUsd: 0.1, receivingTurns: 3 },
+    ]);
+  });
+
+  it('fills in a missing source context size', () => {
+    const store = track(Store.open(':memory:'));
+    const project = store.upsertProject('/work/demo');
+    store.saveCheckpoint(cp(null), project.id);
+    store.saveReceivingUsage(project.id, 'cp-m', receiving);
+    store.saveSourceContext(project.id, 'cp-m', 'codex', 200, 9);
+    expect(store.measuredRelays()[0]).toMatchObject({ sourceContextTokens: 200, receivingFirstContextTokens: 40 });
   });
 });

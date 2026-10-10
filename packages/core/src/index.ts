@@ -1,6 +1,7 @@
 export * from './adapter.js';
 export * from './build.js';
 export * from './checkpoint.js';
+export * from './detect.js';
 export * from './discovery.js';
 export * from './editors.js';
 export * from './errors.js';

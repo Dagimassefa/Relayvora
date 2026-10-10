@@ -109,6 +109,20 @@ export const MIGRATIONS: readonly Migration[] = [
       ALTER TABLE evidence ADD COLUMN excerpt_sha256 TEXT;
     `,
   },
+  {
+    version: 3,
+    name: 'relay-measurement',
+    sql: `
+      ALTER TABLE usage_events ADD COLUMN role TEXT NOT NULL DEFAULT 'source';
+      ALTER TABLE usage_events ADD COLUMN session_id TEXT;
+      ALTER TABLE usage_events ADD COLUMN cached_input_tokens INTEGER;
+      ALTER TABLE usage_events ADD COLUMN context_tokens INTEGER;
+      ALTER TABLE usage_events ADD COLUMN first_context_tokens INTEGER;
+      ALTER TABLE usage_events ADD COLUMN turns INTEGER;
+      ALTER TABLE usage_events ADD COLUMN duration_ms INTEGER;
+      CREATE INDEX usage_events_checkpoint_idx ON usage_events(checkpoint_id, role);
+    `,
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.version;

@@ -1,6 +1,6 @@
 import { AGENTRELAY_VERSION, type SessionSummary } from '@agentrelay/core';
 import { getRepoState } from '@agentrelay/git';
-import type { ActivityStats, CheckpointRow } from '@agentrelay/storage';
+import type { ActivityStats, CheckpointRow, MeasuredRelay } from '@agentrelay/storage';
 import { type CliContext, openStore } from '../context.js';
 import { locateProject, readProjectConfig } from '../project.js';
 import { banner, compact, label, providerChip, providerName, relativeTime, rule, statusIcon } from '../ui/components.js';
@@ -16,6 +16,8 @@ export interface HomeData {
   sessions: Array<{ provider: string; count: number; latest: SessionSummary | null }>;
   lastCheckpoint: CheckpointRow | null;
   stats: { project: ActivityStats | null; global: ActivityStats };
+  /** Relays where both sides' context per turn was measured (agentrelay report). */
+  measured: MeasuredRelay[];
 }
 
 /** Everything the home screen shows. Read-only: running bare `agentrelay` never writes anything. */
@@ -44,10 +46,22 @@ export async function runHome(ctx: CliContext): Promise<HomeData> {
       sessions,
       lastCheckpoint: project ? (store.listCheckpoints(project.id, 1)[0] ?? null) : null,
       stats: { project: project ? store.activityStats(project.id) : null, global: store.activityStats() },
+      measured: store.measuredRelays(),
     };
   } finally {
     store.close();
   }
+}
+
+/** Average context-per-turn change across measured relays, from the agents' own records. */
+function measuredLine(h: HomeData, t: Theme): string[] {
+  const m = h.measured;
+  if (m.length === 0) return [`  ${t.dim('Measure a relay with')} ${t.bold('agentrelay report')} ${t.dim('after the next agent has worked on it.')}`];
+  const avg = m.reduce((n, r) => n + (1 - r.receivingFirstContextTokens / r.sourceContextTokens), 0) / m.length;
+  const pct = `${avg >= 0 ? '-' : '+'}${Math.abs(Math.round(avg * 100))}%`;
+  return [
+    `  ${t.bold(t.fg('cyan', String(m.length)))} ${t.dim(m.length === 1 ? 'relay measured' : 'relays measured')}   ${t.bold(t.fg(avg > 0 ? 'lime' : 'amber', pct))} ${t.dim('context per turn (avg, provider-reported)')}`,
+  ];
 }
 
 export function renderHome(h: HomeData, t: Theme = PLAIN): string {
@@ -103,6 +117,7 @@ export function renderHome(h: HomeData, t: Theme = PLAIN): string {
           cell(t.bold(t.fg('violet', String(g.projects))), g.projects === 1 ? 'project' : 'projects'),
           cell(t.bold(t.fg('amber', `~${compact(g.deferredTokens)}`)), 'tok of context deferred (est.)'),
         ].join('   '),
+      ...measuredLine(h, t),
     );
   }
 
@@ -114,7 +129,7 @@ export function renderHome(h: HomeData, t: Theme = PLAIN): string {
   const from = busiest?.provider ?? 'codex';
   const to = from === 'claude' ? 'codex' : 'claude';
   moves.push(
-    [`agentrelay handoff --from ${from} --to ${to} --verify "<test cmd>"`, 'relay the work'],
+    [`agentrelay handoff --from ${from} --to ${to} --verify auto`, 'relay the work'],
     ['agentrelay sessions', 'browse sessions'],
     ['agentrelay checkpoint list', 'past relays'],
     ['agentrelay doctor', 'system check'],

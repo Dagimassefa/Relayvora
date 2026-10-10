@@ -97,7 +97,7 @@ describe('buildCheckpoint', () => {
   it('records provider-reported usage with its caveat', () => {
     const usage = { inputTokens: 10, cachedInputTokens: 5, outputTokens: 2, costUsd: 0.01, note: 'n' };
     const cp = buildCheckpoint(input({ transcript: transcript({ usage }) }));
-    expect(cp.usage).toEqual({ source: 'provider-reported', ...usage });
+    expect(cp.usage).toEqual({ source: 'provider-reported', ...usage, contextTokens: null, turns: null });
     expect(buildCheckpoint(input()).usage.source).toBe('unavailable');
   });
 });

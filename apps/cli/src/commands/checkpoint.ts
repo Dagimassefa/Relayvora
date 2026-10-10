@@ -94,6 +94,27 @@ const PROVENANCE_TAG: Record<string, string> = {
 
 const PANEL_NAMES: Record<string, string> = { claude: 'Claude Code', codex: 'Codex' };
 
+/**
+ * Context per turn below which a relay rarely pays off: agents start every session at ~30-40k tokens
+ * of their own instructions and tools, and a fresh session spends a few calls getting oriented.
+ * Benchmarked (packages/benchmarks): with a ~40k-token source session, relaying cost +73% on the next step.
+ */
+export const SMALL_SOURCE_CONTEXT = 60_000;
+/** Above this a relay cuts context per call ~70% (benchmarked); dollars break even after ~10 calls on a warm cache. */
+export const LARGE_SOURCE_CONTEXT = 120_000;
+
+export function relayAdvice(contextTokens: number | null | undefined): { verdict: string; detail: string; color: 'lime' | 'amber' | 'gray' } | null {
+  if (contextTokens === null || contextTokens === undefined) return null;
+  const size = `source ${compact(contextTokens)} tok/turn`;
+  if (contextTokens < SMALL_SOURCE_CONTEXT) {
+    return { verdict: 'probably not for cost', detail: `(${size}; continuing is cheaper, relay to switch agent or at a limit)`, color: 'amber' };
+  }
+  if (contextTokens >= LARGE_SOURCE_CONTEXT) {
+    return { verdict: 'yes for tokens; for cost on longer follow-ups', detail: `(${size}; ~70% less context per call, cost break-even ~10 calls)`, color: 'lime' };
+  }
+  return { verdict: 'break-even zone', detail: `(${size}; pays off on longer follow-ups)`, color: 'gray' };
+}
+
 /** The "mission card" printed after a checkpoint is captured. */
 export function renderSummary(s: CheckpointSummary, t: Theme = PLAIN, launching = false): string {
   const sep = t.fg('gray', ` ${t.sym.dot} `);
@@ -133,6 +154,8 @@ export function renderSummary(s: CheckpointSummary, t: Theme = PLAIN, launching 
       : []),
     `${label(t, 'BUDGET')}${meter(t, used, budget, 22)}  ${t.bold(num(used))}${t.dim(`/${num(budget)} tok`)}  ${t.fg('gray', `${pct}%`)}`,
   ];
+  const advice = relayAdvice(s.usage.contextTokens);
+  if (advice) lines.push(`${label(t, 'WORTH')}${t.fg(advice.color, advice.verdict)} ${t.dim(advice.detail)}`);
   const c = s.content;
   const contents = [
     'goal',
