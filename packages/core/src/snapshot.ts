@@ -97,6 +97,31 @@ export interface TurnStats {
   tokensBeforeFirstEdit: number | null;
 }
 
+/** One usage-limit window as the agent last reported it (Codex: 5-hour and weekly). */
+export interface QuotaWindow {
+  /** "5h", "weekly", or "<n>m" for other window lengths. */
+  label: string;
+  usedPercent: number;
+  resetsAt: string | null;
+}
+
+/** Signals that decide whether relaying now beats continuing the session. */
+export interface SessionHealth {
+  /** Last record of any kind. */
+  lastActivityAt: string | null;
+  /** Last successful model call. */
+  lastSuccessAt: string | null;
+  /** Most recent usage-limit error, and the agent's own message about it ("resets 4:50am ..."). */
+  lastLimitAt: string | null;
+  limitMessage: string | null;
+  limitResetsAt: string | null;
+  /** Latest reported limit usage, and when it was reported. */
+  quota: QuotaWindow[];
+  quotaAt: string | null;
+  /** Times the agent compacted (summarised) the conversation because it grew too large. */
+  compactions: number;
+}
+
 export interface TranscriptDigest {
   title: string | null;
   firstUserPrompt: string | null;
@@ -108,6 +133,7 @@ export interface TranscriptDigest {
   lastAgentMessage: string | null;
   usage: TranscriptUsage | null;
   turns: TurnStats | null;
+  health: SessionHealth;
   warnings: string[];
 }
 

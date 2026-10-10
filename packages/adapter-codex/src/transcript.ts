@@ -5,6 +5,8 @@ import {
   asRecord,
   forEachJsonlRecord,
   stripInjectedBlocks,
+  type QuotaWindow,
+  type SessionHealth,
   type TranscriptDigest,
   type TranscriptUsage,
 } from '@agentrelay/core';
@@ -47,7 +49,38 @@ function userText(content: unknown): string | null {
   return parts.length > 0 ? parts.join('\n\n') : null;
 }
 
-const PREFILTER = /"type"\s*:\s*"(event_msg|response_item|message)"/;
+const LIMIT_TEXT = /usage limit|hit your .*limit|rate limit reached/i;
+
+const windowLabel = (minutes: number | null) => (minutes === 300 ? '5h' : minutes === 10080 ? 'weekly' : minutes ? `${minutes}m` : 'usage');
+
+/**
+ * Codex reports limit usage with every token_count, e.g.
+ * { primary: { used_percent: 11, window_minutes: 300, resets_at: 1773937580 }, secondary: {...}, rate_limit_reached_type }
+ */
+function readRateLimits(limits: Record<string, unknown> | undefined, timestamp: unknown, health: SessionHealth): void {
+  if (!limits) return;
+  const quota: QuotaWindow[] = [];
+  for (const key of ['primary', 'secondary']) {
+    const w = asRecord(limits[key]);
+    const used = asNumber(w?.used_percent);
+    if (!w || used === null) continue;
+    const resets = asNumber(w.resets_at);
+    quota.push({ label: windowLabel(asNumber(w.window_minutes)), usedPercent: used, resetsAt: resets ? new Date(resets * 1000).toISOString() : null });
+  }
+  if (quota.length > 0) {
+    health.quota = quota;
+    health.quotaAt = typeof timestamp === 'string' ? timestamp : null;
+  }
+  const reached = limits.rate_limit_reached_type;
+  const full = quota.find((q) => q.usedPercent >= 100);
+  if ((typeof reached === 'string' && reached) || full) {
+    health.lastLimitAt = typeof timestamp === 'string' ? timestamp : health.lastLimitAt;
+    health.limitMessage = `${full?.label ?? reached} limit reached`;
+    health.limitResetsAt = full?.resetsAt ?? quota.find((q) => q.resetsAt)?.resetsAt ?? null;
+  }
+}
+
+const PREFILTER =/"type"\s*:\s*"(event_msg|response_item|message)"/;
 
 /**
  * Prefers `event_msg` records (clean user/agent text). Falls back to `response_item` messages for
@@ -61,6 +94,16 @@ export async function readCodexTranscript(file: string): Promise<TranscriptDiges
   let usage: TranscriptUsage | null = null;
   const tracker = new TurnTracker();
   let lastTotal = -1;
+  const health: SessionHealth = {
+    lastActivityAt: null,
+    lastSuccessAt: null,
+    lastLimitAt: null,
+    limitMessage: null,
+    limitResetsAt: null,
+    quota: [],
+    quotaAt: null,
+    compactions: 0,
+  };
 
   const stats = await forEachJsonlRecord(
     file,
@@ -80,6 +123,9 @@ export async function readCodexTranscript(file: string): Promise<TranscriptDiges
           eventAgent = payload.message.trim();
         } else if (payload.type === 'task_complete' && typeof payload.last_agent_message === 'string' && payload.last_agent_message.trim()) {
           eventAgent = payload.last_agent_message.trim();
+        } else if (payload.type === 'error' && typeof payload.message === 'string' && LIMIT_TEXT.test(payload.message)) {
+          health.lastLimitAt = typeof record.timestamp === 'string' ? record.timestamp : health.lastLimitAt;
+          health.limitMessage = payload.message.slice(0, 200);
         } else if (payload.type === 'token_count') {
           const info = asRecord(payload.info);
           const total = asRecord(info?.total_token_usage);
@@ -88,7 +134,9 @@ export async function readCodexTranscript(file: string): Promise<TranscriptDiges
           if (totalTokens !== null && totalTokens > lastTotal) {
             lastTotal = totalTokens;
             tracker.turn(asNumber(asRecord(info?.last_token_usage)?.input_tokens));
+            if (typeof record.timestamp === 'string') health.lastSuccessAt = record.timestamp;
           }
+          readRateLimits(asRecord(payload.rate_limits), record.timestamp, health);
           if (total) {
             usage = {
               // OpenAI semantics: input_tokens already includes cached_input_tokens.
@@ -133,6 +181,7 @@ export async function readCodexTranscript(file: string): Promise<TranscriptDiges
     lastAgentMessage: eventAgent ?? itemAgent,
     usage,
     turns: tracker.stats(),
+    health: { ...health, lastActivityAt: tracker.stats()?.lastAt ?? null },
     warnings,
   };
 }

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { AgentRelayError, ExitCode, renderHandoff, type Checkpoint } from '@agentrelay/core';
+import { AgentRelayError, ExitCode, assessRelay, renderHandoff, type Checkpoint, type RelayAssessment } from '@agentrelay/core';
 import type { CheckpointRow } from '@agentrelay/storage';
 import { type CreateCheckpointResult, loadCheckpoint } from '../checkpoint-service.js';
 import { type CliContext, openStore } from '../context.js';
@@ -28,6 +28,8 @@ export interface CheckpointSummary {
   pointer: string;
   /** True when the handoff text was copied to the clipboard (--copy). */
   copied: boolean;
+  /** Whether relaying now beats continuing the source session. */
+  assessment: RelayAssessment | null;
 }
 
 export function summarize(result: CreateCheckpointResult, copied = false): CheckpointSummary {
@@ -75,6 +77,7 @@ export function summarize(result: CreateCheckpointResult, copied = false): Check
     usage: cp.usage,
     warnings: cp.warnings,
     pointer: pointerPrompt(cp, result.handoffFile),
+    assessment: relayAssessment(cp),
     copied,
   };
 }
@@ -94,25 +97,18 @@ const PROVENANCE_TAG: Record<string, string> = {
 
 const PANEL_NAMES: Record<string, string> = { claude: 'Claude Code', codex: 'Codex' };
 
-/**
- * Context per turn below which a relay rarely pays off: agents start every session at ~30-40k tokens
- * of their own instructions and tools, and a fresh session spends a few calls getting oriented.
- * Benchmarked (packages/benchmarks): with a ~40k-token source session, relaying cost +73% on the next step.
- */
-export const SMALL_SOURCE_CONTEXT = 60_000;
-/** Above this a relay cuts context per call ~70% (benchmarked); dollars break even after ~10 calls on a warm cache. */
-export const LARGE_SOURCE_CONTEXT = 120_000;
+export const AGENT_NAMES: Record<string, string> = { claude: 'Claude Code', codex: 'Codex' };
 
-export function relayAdvice(contextTokens: number | null | undefined): { verdict: string; detail: string; color: 'lime' | 'amber' | 'gray' } | null {
-  if (contextTokens === null || contextTokens === undefined) return null;
-  const size = `source ${compact(contextTokens)} tok/turn`;
-  if (contextTokens < SMALL_SOURCE_CONTEXT) {
-    return { verdict: 'probably not for cost', detail: `(${size}; continuing is cheaper, relay to switch agent or at a limit)`, color: 'amber' };
-  }
-  if (contextTokens >= LARGE_SOURCE_CONTEXT) {
-    return { verdict: 'yes for tokens; for cost on longer follow-ups', detail: `(${size}; ~70% less context per call, cost break-even ~10 calls)`, color: 'lime' };
-  }
-  return { verdict: 'break-even zone', detail: `(${size}; pays off on longer follow-ups)`, color: 'gray' };
+/** Should this relay happen now? Size, idle time (cache expiry), usage limits and compactions. */
+export function relayAssessment(cp: Checkpoint, now: Date = new Date()): RelayAssessment | null {
+  if (cp.source.provider === 'manual') return null;
+  return assessRelay({
+    agent: AGENT_NAMES[cp.source.provider] ?? cp.source.provider,
+    provider: cp.source.provider,
+    contextTokens: cp.usage.contextTokens,
+    health: cp.source.health,
+    now,
+  });
 }
 
 /** The "mission card" printed after a checkpoint is captured. */
@@ -154,8 +150,13 @@ export function renderSummary(s: CheckpointSummary, t: Theme = PLAIN, launching 
       : []),
     `${label(t, 'BUDGET')}${meter(t, used, budget, 22)}  ${t.bold(num(used))}${t.dim(`/${num(budget)} tok`)}  ${t.fg('gray', `${pct}%`)}`,
   ];
-  const advice = relayAdvice(s.usage.contextTokens);
-  if (advice) lines.push(`${label(t, 'WORTH')}${t.fg(advice.color, advice.verdict)} ${t.dim(advice.detail)}`);
+  const a = s.assessment;
+  if (a) {
+    const color = a.verdict === 'relay' ? 'lime' : a.verdict === 'continue' ? 'amber' : 'gray';
+    const word = a.verdict === 'relay' ? 'yes' : a.verdict === 'continue' ? 'probably not' : 'either way';
+    lines.push(`${label(t, 'WORTH')}${t.bold(t.fg(color, word))} ${t.dim(a.headline)}`);
+    for (const reason of a.reasons) lines.push(`${label(t, '')}${t.dim(reason)}`);
+  }
   const c = s.content;
   const contents = [
     'goal',

@@ -5,6 +5,7 @@ import {
   asRecord,
   forEachJsonlRecord,
   stripInjectedBlocks,
+  type SessionHealth,
   type TranscriptDigest,
   type TranscriptUsage,
 } from '@agentrelay/core';
@@ -70,7 +71,7 @@ function usageFromCostState(record: Record<string, unknown>): TranscriptUsage | 
 /** Claude Code tools that change files; the first call using one ends onboarding. */
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
 
-const PREFILTER =/"type"\s*:\s*"(user|assistant|ai-title|cost-state)"/;
+const PREFILTER = /"type"\s*:\s*"(user|assistant|ai-title|cost-state|system)"/;
 
 export async function readClaudeTranscript(file: string): Promise<TranscriptDigest> {
   const prompts = new PromptCollector();
@@ -81,6 +82,16 @@ export async function readClaudeTranscript(file: string): Promise<TranscriptDige
   // Claude Code writes one record per content block, each repeating the call's usage: keep one per message id.
   const calls = new Map<string, Record<string, unknown>>();
   const editCalls = new Set<string>();
+  const health: SessionHealth = {
+    lastActivityAt: null,
+    lastSuccessAt: null,
+    lastLimitAt: null,
+    limitMessage: null,
+    limitResetsAt: null, // Claude reports a local wall-clock time ("resets 4:50am"), kept in limitMessage
+    quota: [],
+    quotaAt: null,
+    compactions: 0,
+  };
 
   const stats = await forEachJsonlRecord(
     file,
@@ -98,7 +109,17 @@ export async function readClaudeTranscript(file: string): Promise<TranscriptDige
           break;
         case 'assistant': {
           if (!message) break;
+          if (record.isApiErrorMessage === true) {
+            // e.g. error "rate_limit": "You've hit your session limit · resets 4:50am (Africa/Nairobi)"
+            const text = assistantText(message) ?? '';
+            if (record.error === 'rate_limit' || /hit your .*limit|usage limit/i.test(text)) {
+              health.lastLimitAt = typeof record.timestamp === 'string' ? record.timestamp : health.lastLimitAt;
+              health.limitMessage = text.replace(/^API Error:\s*/i, '').trim() || 'usage limit reached';
+            }
+            break; // an error is not the agent's report
+          }
           lastAgentMessage = assistantText(message) ?? lastAgentMessage;
+          if (message.usage && typeof record.timestamp === 'string') health.lastSuccessAt = record.timestamp;
           const callUsage = asRecord(message.usage);
           const id = typeof message.id === 'string' ? message.id : typeof record.requestId === 'string' ? record.requestId : null;
           if (callUsage && id) calls.set(id, callUsage);
@@ -111,6 +132,9 @@ export async function readClaudeTranscript(file: string): Promise<TranscriptDige
           break;
         case 'cost-state':
           usage = usageFromCostState(record) ?? usage;
+          break;
+        case 'system':
+          if (record.subtype === 'compact_boundary') health.compactions++;
           break;
       }
     },
@@ -153,6 +177,7 @@ export async function readClaudeTranscript(file: string): Promise<TranscriptDige
     lastAgentMessage,
     usage,
     turns: tracker.stats(),
+    health: { ...health, lastActivityAt: tracker.stats()?.lastAt ?? null },
     warnings,
   };
 }

@@ -15,6 +15,7 @@ import { type ExportOptions, runExport } from './commands/export.js';
 import { renderHome, runHome } from './commands/home.js';
 import { renderInit, runInit } from './commands/init.js';
 import { renderReport, runReport } from './commands/report.js';
+import { runWatch } from './commands/watch.js';
 import { renderSessions, runSessions } from './commands/sessions.js';
 import { copyToClipboard } from './clipboard.js';
 import { type CliContext, createContext, selectAdapters } from './context.js';
@@ -356,6 +357,30 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
         ...(opts.json ? {} : { progress: terminalProgress(ui.err, process.stderr) }),
       });
       emit(opts, report, (r) => renderReport(r, ui.out));
+    });
+
+  program
+    .command('watch')
+    .description('alert the moment a relay pays off: an agent hits or nears its limit, or a large session goes cold')
+    .option('-i, --interval <seconds>', 'seconds between checks', parsePositiveInt, 60)
+    .option('--once', 'check once and exit')
+    .option('--bell', 'ring the terminal bell on each alert')
+    .action(async (flags: { interval: number; once?: boolean; bell?: boolean }, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      const stop = new AbortController();
+      const onSigint = () => stop.abort();
+      process.on('SIGINT', onSigint);
+      try {
+        await runWatch(ctx, ui.out, {
+          intervalSeconds: flags.interval,
+          signal: stop.signal,
+          ...(flags.once ? { once: true } : {}),
+          ...(flags.bell ? { bell: true } : {}),
+          ...(opts.json ? { json: true } : {}),
+        });
+      } finally {
+        process.off('SIGINT', onSigint);
+      }
     });
 
   const config = program.command('config').description('inspect configuration');

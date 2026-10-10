@@ -1,4 +1,5 @@
 export * from './adapter.js';
+export * from './advice.js';
 export * from './build.js';
 export * from './checkpoint.js';
 export * from './detect.js';

@@ -65,14 +65,31 @@ task done by continuing one session versus relaying to a fresh one, scored by hi
   session, because re-reading a warm cache is cheap (~$0.20/M tokens) and writing a new one is not (~$8/M).
 - **Likely the biggest win, not yet benchmarked:** relaying after a break (you hit a limit and came back later).
   The old session's cache has expired by then, so continuing it means re-writing its whole context.
-- Relay when you **hit a limit, want to switch agents, or a big session has a lot of work left**. The checkpoint card's
-  **WORTH** row tells you which case you are in.
+- Relay when you **hit a limit, want to switch agents, or a big session has gone cold or has a lot of work left**.
+
+### Knowing when to relay
+
+AgentRelay works this out for you from each agent's own session records, and shows it on the home screen's
+**relay radar**, the checkpoint card's **WORTH** row, and as live alerts from `agentrelay watch`:
+
+| Signal | How it is detected | Verdict |
+| --- | --- | --- |
+| Usage limit hit | Claude Code: `rate_limit` API error ("You've hit your session limit · resets ..."); Codex: limit error or `rate_limit_reached_type` | relay now |
+| Near a limit | Codex reports used % of its 5-hour and weekly windows; 90% or more | relay soon |
+| Large session gone cold | Idle over an hour (Claude Code caches for 1 hour, measured) and 60k+ tokens per call | relay: continuing re-processes everything at full price |
+| Compacted | Claude Code summarised the conversation because it grew too large | relay |
+| Small, warm session | Under ~60k tokens per call, recently active | continue |
+
+```sh
+agentrelay watch --bell        # in a spare terminal; Ctrl+C to stop
+```
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| `agentrelay` | Home screen: project, sessions, last relay, stats, suggested next commands. Read-only. |
+| `agentrelay` | Home screen: project, sessions, **relay radar**, last relay, stats, suggested commands. Read-only. |
+| `agentrelay watch [--interval 60] [--bell]` | Alerts the moment a relay pays off: an agent hit or nears its limit, or a large session went cold. |
 | `agentrelay doctor` | Checks Node, platform/WSL, Git, the store, the project, and each agent (PATH or editor extension). |
 | `agentrelay init` | Registers the project (Git root) and creates `.agentrelay/`, which ignores itself in Git. |
 | `agentrelay sessions [-p claude\|codex] [--all]` | Lists agent sessions for this project, newest first. Read-only. |

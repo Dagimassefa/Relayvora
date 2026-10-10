@@ -1,6 +1,7 @@
 import { AGENTRELAY_VERSION, type SessionSummary } from '@agentrelay/core';
 import { getRepoState } from '@agentrelay/git';
 import type { ActivityStats, CheckpointRow, MeasuredRelay } from '@agentrelay/storage';
+import { type AgentRadar, relayRadar, renderRadar } from '../alerts.js';
 import { type CliContext, openStore } from '../context.js';
 import { locateProject, readProjectConfig } from '../project.js';
 import { banner, compact, label, providerChip, providerName, relativeTime, rule, statusIcon } from '../ui/components.js';
@@ -18,12 +19,14 @@ export interface HomeData {
   stats: { project: ActivityStats | null; global: ActivityStats };
   /** Relays where both sides' context per turn was measured (agentrelay report). */
   measured: MeasuredRelay[];
+  /** Per agent: should its latest session be relayed now? */
+  radar: AgentRadar[];
 }
 
 /** Everything the home screen shows. Read-only: running bare `agentrelay` never writes anything. */
 export async function runHome(ctx: CliContext): Promise<HomeData> {
   const { root, isGitRepo } = await locateProject(ctx.cwd);
-  const [git, sessions] = await Promise.all([
+  const [git, sessions, radar] = await Promise.all([
     isGitRepo ? getRepoState(root).catch(() => null) : Promise.resolve(null),
     Promise.all(
       ctx.adapters.map(async (adapter) => {
@@ -31,6 +34,7 @@ export async function runHome(ctx: CliContext): Promise<HomeData> {
         return { provider: adapter.id, count: found?.sessions.length ?? 0, latest: found?.sessions[0] ?? null };
       }),
     ),
+    relayRadar(ctx, root).catch(() => [] as AgentRadar[]),
   ]);
 
   const store = openStore(ctx);
@@ -47,6 +51,7 @@ export async function runHome(ctx: CliContext): Promise<HomeData> {
       lastCheckpoint: project ? (store.listCheckpoints(project.id, 1)[0] ?? null) : null,
       stats: { project: project ? store.activityStats(project.id) : null, global: store.activityStats() },
       measured: store.measuredRelays(),
+      radar,
     };
   } finally {
     store.close();
@@ -96,6 +101,9 @@ export function renderHome(h: HomeData, t: Theme = PLAIN): string {
         : t.dim('no checkpoints yet')
     }`,
   );
+
+  // Relay radar: is it worth relaying any agent's latest session right now?
+  out.push('', `  ${rule(t, 'RELAY RADAR', 'lime', w)}`, '', ...renderRadar(h.radar, t));
 
   // Stats
   const g = h.stats.global;

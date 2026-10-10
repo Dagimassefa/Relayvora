@@ -285,6 +285,9 @@ export function buildCheckpoint(input: BuildCheckpointInput): Checkpoint {
       sessionId: input.source.sessionId,
       sessionPath: input.source.sessionPath,
       title: input.transcript?.title ? r.text(input.transcript.title) : null,
+      health: input.transcript?.health
+        ? { ...input.transcript.health, limitMessage: input.transcript.health.limitMessage ? r.text(input.transcript.health.limitMessage) : null }
+        : null,
       capturedAt: at,
     },
     task: {

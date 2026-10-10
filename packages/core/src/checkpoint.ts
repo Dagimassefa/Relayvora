@@ -64,6 +64,17 @@ export const Evidence = z.object({
 });
 export type Evidence = z.infer<typeof Evidence>;
 
+export const SessionHealthSchema = z.object({
+  lastActivityAt: z.string().nullable(),
+  lastSuccessAt: z.string().nullable(),
+  lastLimitAt: z.string().nullable(),
+  limitMessage: z.string().nullable(),
+  limitResetsAt: z.string().nullable(),
+  quota: z.array(z.object({ label: z.string(), usedPercent: z.number(), resetsAt: z.string().nullable() })),
+  quotaAt: z.string().nullable(),
+  compactions: z.number().int().nonnegative(),
+});
+
 export const UsageSource = z.enum(['provider-reported', 'estimated', 'unavailable']);
 
 export const DeferredRef = z.object({
@@ -98,6 +109,8 @@ export const Checkpoint = z
       sessionId: z.string().nullable(),
       sessionPath: z.string().nullable().default(null),
       title: z.string().nullable().default(null),
+      /** Limit, idle and compaction signals from the source session when the checkpoint was made. */
+      health: SessionHealthSchema.nullable().default(null),
       capturedAt: z.iso.datetime({ offset: true }),
     }),
     task: z.object({
