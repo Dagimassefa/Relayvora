@@ -55,6 +55,8 @@ export interface TranscriptUsage {
 export interface TranscriptDigest {
   title: string | null;
   firstUserPrompt: string | null;
+  /** Newest prompt long enough to describe a task; the best guess at the current goal. */
+  latestSubstantialPrompt: string | null;
   /** Up to the last few user prompts, oldest first. Excludes the first prompt. */
   recentUserPrompts: string[];
   userPromptCount: number;

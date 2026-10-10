@@ -184,16 +184,21 @@ export function buildCheckpoint(input: BuildCheckpointInput): Checkpoint {
   const userFacts = (items: string[] | undefined): Fact[] =>
     (items ?? []).filter((t) => t.trim()).map((t) => ({ text: r.text(t.trim()), provenance: 'user-provided', evidenceRefs: [] }));
 
+  // Sessions drift across tasks, so the latest request long enough to describe a task is a better
+  // guess at the current goal than the first prompt. Either way it is labelled inferred.
+  const t = input.transcript;
+  const inferredFrom = t?.latestSubstantialPrompt ? 'latest substantial request' : 'first prompt';
+  const inferredGoal = t?.latestSubstantialPrompt ?? t?.firstUserPrompt ?? null;
   let goal: Fact;
   if (input.user.goal?.trim()) {
     goal = { text: r.text(input.user.goal.trim()), provenance: 'user-provided', evidenceRefs: [] };
-  } else if (input.transcript?.firstUserPrompt) {
+  } else if (inferredGoal) {
     goal = {
-      text: r.text(truncateText(input.transcript.firstUserPrompt, LIMITS.goalChars).text),
+      text: r.text(truncateText(inferredGoal, LIMITS.goalChars).text),
       provenance: 'inferred',
       evidenceRefs: transcriptRefs,
     };
-    warnings.push('Goal was inferred from the first prompt of the session; pass --goal to state it explicitly.');
+    warnings.push(`Goal was inferred from the session's ${inferredFrom}; pass --goal to state it explicitly.`);
   } else {
     throw new AgentRelayError(
       'No goal available: pass --goal "<what you are trying to do>", or choose a session with --from/--session.',
@@ -201,7 +206,7 @@ export function buildCheckpoint(input: BuildCheckpointInput): Checkpoint {
     );
   }
 
-  const recentRequests: Fact[] = (input.transcript?.recentUserPrompts ?? []).map((p) => ({
+  const recentRequests: Fact[] = (t?.recentUserPrompts ?? []).filter((p) => p !== inferredGoal || input.user.goal?.trim()).map((p) => ({
     text: r.text(truncateText(p, LIMITS.promptChars).text),
     provenance: 'user-provided',
     evidenceRefs: transcriptRefs,

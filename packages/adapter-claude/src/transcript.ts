@@ -3,6 +3,7 @@ import {
   asNumber,
   asRecord,
   forEachJsonlRecord,
+  stripInjectedBlocks,
   type TranscriptDigest,
   type TranscriptUsage,
 } from '@agentrelay/core';
@@ -12,7 +13,7 @@ const INJECTED_BLOCK =
   /<(system-reminder|local-command-[\w-]+|command-[\w-]+|ide_[\w-]+|user-prompt-submit-hook|bash-[\w-]+)\b[^>]*>[\s\S]*?<\/\1>/g;
 
 export function cleanUserText(text: string): string {
-  return text.replace(INJECTED_BLOCK, '').trim();
+  return stripInjectedBlocks(text, INJECTED_BLOCK);
 }
 
 function userPromptText(message: Record<string, unknown>): string | null {
@@ -106,6 +107,7 @@ export async function readClaudeTranscript(file: string): Promise<TranscriptDige
   return {
     title,
     firstUserPrompt: prompts.first,
+    latestSubstantialPrompt: prompts.latestSubstantial,
     recentUserPrompts: prompts.recentPrompts(),
     userPromptCount: prompts.count,
     lastAgentMessage,

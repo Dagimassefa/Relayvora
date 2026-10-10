@@ -246,8 +246,9 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
       .description('build a checkpoint and preview the handoff for another agent')
       .requiredOption('--to <provider>', 'provider that will receive the handoff (claude, codex)')
       .option('--preview', 'show the handoff without launching anything (default)')
-      .option('--confirm', 'launch the target agent with the handoff (not available yet)'),
-  ).action(async (flags: CheckpointFlags & { confirm?: boolean }, cmd: Command) => {
+      .option('--confirm', 'launch the target agent with the handoff (not available yet)')
+      .option('--print', 'print the full handoff text in the terminal (always printed when output is piped)'),
+  ).action(async (flags: CheckpointFlags & { confirm?: boolean; print?: boolean }, cmd: Command) => {
     const { opts, ctx } = ctxFor(cmd);
     if (flags.confirm) {
       throw new AgentRelayError(
@@ -260,8 +261,11 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
     if (opts.json) {
       emit(opts, { ...summarize(result, copied), markdown: result.checkpoint.handoff.prompt }, () => '');
     } else {
-      // The handoff text goes to stdout (pipe-friendly); the card goes to stderr.
-      process.stdout.write(highlightMarkdown(result.checkpoint.handoff.prompt ?? '', ui.out));
+      // Piped or redirected: the handoff text goes to stdout so `> handoff.md` works. On a terminal the
+      // full text (every diff) would bury the card, so it is shown only with --print.
+      if (flags.print || !process.stdout.isTTY) {
+        process.stdout.write(highlightMarkdown(result.checkpoint.handoff.prompt ?? '', ui.out));
+      }
       process.stderr.write(`${renderSummary(summarize(result, copied), ui.err)}\n`);
     }
   });

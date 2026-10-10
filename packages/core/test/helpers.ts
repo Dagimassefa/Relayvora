@@ -41,6 +41,7 @@ export function transcript(overrides: Partial<TranscriptDigest> = {}): Transcrip
   return {
     title: 'Fix date parser',
     firstUserPrompt: 'Fix the failing date parser test',
+    latestSubstantialPrompt: null,
     recentUserPrompts: ['Also keep the public API stable'],
     userPromptCount: 2,
     lastAgentMessage: 'Fixed leap years; tests pass now.',

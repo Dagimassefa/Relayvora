@@ -16,6 +16,8 @@ export interface CheckpointSummary {
   goalProvenance: string;
   evidence: { total: number; failingCommands: number; passingCommands: number };
   files: { changed: number; linesAdded: number; linesDeleted: number };
+  /** What the handoff text contains, for the card when the full text is not printed. */
+  content: { requests: number; blockers: number; pending: number; inlinedFiles: number; agentReport: boolean };
   handoff: { file: string; estimatedTokens: number | null; budgetTokens: number | null; deferred: number; deferredTokens: number };
   usage: Checkpoint['usage'];
   warnings: string[];
@@ -46,6 +48,13 @@ export function summarize(result: CreateCheckpointResult, copied = false): Check
       changed: cp.project.dirtyFiles.length,
       linesAdded: files.reduce((n, e) => n + (e.linesAdded ?? 0), 0),
       linesDeleted: files.reduce((n, e) => n + (e.linesDeleted ?? 0), 0),
+    },
+    content: {
+      requests: cp.task.recentRequests.length,
+      blockers: cp.task.blockers.length,
+      pending: cp.task.pending.length,
+      inlinedFiles: files.filter((e) => e.excerpt && !cp.handoff.deferred.some((d) => d.evidenceId === e.id)).length,
+      agentReport: cp.task.lastAgentReport !== null && !cp.handoff.deferred.some((d) => d.label.includes('last report')),
     },
     handoff: {
       file: result.handoffFile,
@@ -110,6 +119,16 @@ export function renderSummary(s: CheckpointSummary, t: Theme = PLAIN): string {
     `${label(t, 'FILES')}${t.bold(String(s.files.changed))} changed${sep}${t.fg('lime', `+${num(s.files.linesAdded)}`)} ${t.fg('red', `-${num(s.files.linesDeleted)}`)}`,
     `${label(t, 'BUDGET')}${meter(t, used, budget, 22)}  ${t.bold(num(used))}${t.dim(`/${num(budget)} tok`)}  ${t.fg('gray', `${pct}%`)}`,
   ];
+  const c = s.content;
+  const contents = [
+    'goal',
+    c.requests ? `${c.requests} request(s)` : '',
+    c.blockers ? t.fg('red', `${c.blockers} blocker(s)`) : '',
+    c.pending ? `${c.pending} to-do` : '',
+    c.inlinedFiles ? `${c.inlinedFiles} diff(s)` : '',
+    c.agentReport ? 'agent report' : '',
+  ].filter(Boolean);
+  lines.push(`${label(t, 'HOLDS')}${contents.join(sep)}`);
   if (s.handoff.deferred > 0) {
     lines.push(
       `${label(t, 'DEFER')}${t.bold(String(s.handoff.deferred))} item(s)${sep}${t.fg('cyan', `~${compact(s.handoff.deferredTokens)} tok`)} ${t.dim('kept out, fetch on demand')}`,
@@ -117,8 +136,9 @@ export function renderSummary(s: CheckpointSummary, t: Theme = PLAIN): string {
   }
   if (s.usage.source !== 'unavailable') {
     const cost = s.usage.costUsd !== null ? `${sep}~$${s.usage.costUsd.toFixed(2)}` : '';
+    const cached = s.usage.cachedInputTokens ? ` ${t.dim(`(${compact(s.usage.cachedInputTokens)} cached)`)}` : '';
     lines.push(
-      `${label(t, 'USAGE')}${compact(s.usage.inputTokens ?? 0)} in${sep}${compact(s.usage.outputTokens ?? 0)} out${cost} ${t.dim('(session so far)')}`,
+      `${label(t, 'USAGE')}${compact(s.usage.inputTokens ?? 0)} in${cached}${sep}${compact(s.usage.outputTokens ?? 0)} out${cost} ${t.dim('· session so far')}`,
     );
   }
 
@@ -127,7 +147,7 @@ export function renderSummary(s: CheckpointSummary, t: Theme = PLAIN): string {
 
   const panel = s.targetProvider ? `the ${providerName(t, PANEL_NAMES[s.targetProvider] ?? s.targetProvider)} panel` : 'the next agent';
   const arrow = t.fg('cyan', t.sym.arrow);
-  out.push('', `  ${arrow} ${t.dim('review')}  ${t.bold(displayPath(s.handoff.file))}`);
+  out.push('', `  ${arrow} ${t.dim('review')}  ${t.bold(displayPath(s.handoff.file))}  ${t.dim(`or agentrelay checkpoint show ${s.id}`)}`);
   if (s.copied) {
     out.push(`  ${statusIcon(t, 'ok')} ${t.bold(t.fg('lime', 'copied'))}  paste into ${panel} ${t.dim('(Ctrl+V / Cmd+V)')}`);
   } else {

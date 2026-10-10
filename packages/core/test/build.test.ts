@@ -101,3 +101,23 @@ describe('buildCheckpoint', () => {
     expect(buildCheckpoint(input()).usage.source).toBe('unavailable');
   });
 });
+
+describe('goal inference', () => {
+  it('prefers the latest substantial request over the first prompt, and does not repeat it', () => {
+    const latest = 'route each user type to the right portal pages after login, using the figma as reference';
+    const cp = buildCheckpoint(
+      input({
+        user: {},
+        source: { provider: 'codex', sessionId: 's', sessionPath: '/s.jsonl' },
+        transcript: transcript({
+          firstUserPrompt: 'better filters',
+          latestSubstantialPrompt: latest,
+          recentUserPrompts: [latest, 'give me a commit message'],
+        }),
+      }),
+    );
+    expect(cp.task.goal).toMatchObject({ text: latest, provenance: 'inferred' });
+    expect(cp.task.recentRequests.map((f) => f.text)).toEqual(['give me a commit message']);
+    expect(cp.warnings.join()).toMatch(/latest substantial request/);
+  });
+});

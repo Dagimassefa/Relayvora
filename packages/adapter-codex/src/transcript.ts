@@ -3,6 +3,7 @@ import {
   asNumber,
   asRecord,
   forEachJsonlRecord,
+  stripInjectedBlocks,
   type TranscriptDigest,
   type TranscriptUsage,
 } from '@agentrelay/core';
@@ -18,8 +19,32 @@ function contentText(content: unknown, itemType: string): string | null {
   return text || null;
 }
 
-// Codex injects environment and instruction blocks as user-role messages.
-const INJECTED = /^<(environment_context|user_instructions|permissions|turn_aborted)\b/;
+/**
+ * Recovers what the user actually typed. Codex injects context as snake_case tag blocks
+ * (<environment_context>, <external_codex_apps_open_page>, ...), and the IDE extension wraps the
+ * request in Markdown such as "# Files mentioned by the user: ... ## My request: <text>".
+ */
+export function cleanCodexUserText(text: string): string | null {
+  let out = stripInjectedBlocks(text);
+  if (/^#{1,2} (Context from my IDE setup|Files mentioned by the user)\b/.test(out)) {
+    const marker = /^#{1,3} My request[^\n]*:[ \t]*$/gm;
+    let last: RegExpExecArray | null = null;
+    for (let m = marker.exec(out); m; m = marker.exec(out)) last = m;
+    out = last ? out.slice(last.index + last[0].length).trim() : '';
+  }
+  return out || null;
+}
+
+/** Cleans each input_text item separately: one item can be injected context, the next the request. */
+function userText(content: unknown): string | null {
+  if (!Array.isArray(content)) return null;
+  const parts = content
+    .map((c) => asRecord(c))
+    .filter((c) => c?.type === 'input_text' && typeof c.text === 'string')
+    .map((c) => cleanCodexUserText(c!.text as string))
+    .filter((t): t is string => t !== null);
+  return parts.length > 0 ? parts.join('\n\n') : null;
+}
 
 const PREFILTER = /"type"\s*:\s*"(event_msg|response_item|message)"/;
 
@@ -45,7 +70,8 @@ export async function readCodexTranscript(file: string): Promise<TranscriptDiges
 
       if (record.type === 'event_msg') {
         if (payload.type === 'user_message' && typeof payload.message === 'string') {
-          eventPrompts.add(payload.message);
+          const text = cleanCodexUserText(payload.message);
+          if (text) eventPrompts.add(text);
         } else if (payload.type === 'agent_message' && typeof payload.message === 'string' && payload.message.trim()) {
           eventAgent = payload.message.trim();
         } else if (payload.type === 'task_complete' && typeof payload.last_agent_message === 'string' && payload.last_agent_message.trim()) {
@@ -67,8 +93,8 @@ export async function readCodexTranscript(file: string): Promise<TranscriptDiges
       }
 
       if (payload.type === 'message' && payload.role === 'user') {
-        const text = contentText(payload.content, 'input_text');
-        if (text && !INJECTED.test(text)) itemPrompts.add(text);
+        const text = userText(payload.content);
+        if (text) itemPrompts.add(text);
       } else if (payload.type === 'message' && payload.role === 'assistant') {
         itemAgent = contentText(payload.content, 'output_text') ?? itemAgent;
       }
@@ -83,6 +109,7 @@ export async function readCodexTranscript(file: string): Promise<TranscriptDiges
   return {
     title: null,
     firstUserPrompt: prompts.first,
+    latestSubstantialPrompt: prompts.latestSubstantial,
     recentUserPrompts: prompts.recentPrompts(),
     userPromptCount: prompts.count,
     lastAgentMessage: eventAgent ?? itemAgent,

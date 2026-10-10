@@ -66,3 +66,16 @@ describe('truncateText / stripAnsi', () => {
     expect(stripAnsi('\u001b[1;32m✓\u001b[0m ok')).toBe('✓ ok');
   });
 });
+
+describe('PromptCollector', () => {
+  it('tracks first, latest substantial and the recent window', async () => {
+    const { PromptCollector } = await import('../src/transcript.js');
+    const c = new PromptCollector();
+    const long = 'please route every user type to the correct portal page after they sign in today';
+    for (const p of ['first short one', long, 'a', 'b', 'give me a commit message']) c.add(p);
+    expect(c.first).toBe('first short one');
+    expect(c.latestSubstantial).toBe(long);
+    expect(c.recentPrompts()).toEqual(['a', 'b', 'give me a commit message']);
+    expect(c.count).toBe(5);
+  });
+});
