@@ -1,11 +1,36 @@
+<div align="center">
+
 # AgentRelay
 
-Move unfinished work between AI coding agents (Claude Code ⇄ Codex) with a compact, evidence-backed handoff
-instead of replaying a long transcript.
+**Your agent went down mid-mission. Send in the next one.**
 
-When an agent hits a usage limit, gets stuck, or its session has grown huge, AgentRelay reads that session,
-captures the real state of your repository (uncommitted changes, commits made during the session, test results),
-writes a short handoff that labels what is verified and what is not, and starts the next agent with it.
+Hand unfinished work from Claude Code to Codex (and back) in seconds,
+with a short, verified handoff instead of a 200k-token transcript.
+
+`Claude Code ⇄ Codex` · `local-only` · `no telemetry` · `Windows · macOS · Linux`
+
+*In memory of Captain John Price. "Bravo Six, going dark."*
+
+</div>
+
+---
+
+You're deep in a session. The agent hits its usage limit, or gets stuck, or the context has grown so big that
+every call costs a fortune. Normally you'd open a new agent and spend twenty minutes explaining where you were.
+
+**AgentRelay does the briefing for you:**
+
+- 🎯 **Reads the session:** your goal, your recent requests, and what the agent last reported.
+- 🔍 **Checks the ground truth:** uncommitted changes, commits made during the session, and real test results.
+- 🏷️ **Labels every fact:** `[observed]`, `[user]`, `[agent-reported]` or `[inferred]`, so the next agent knows what's
+  verified and what's hearsay.
+- 🚀 **Launches the next agent** with the handoff loaded, in your terminal or your editor.
+
+```sh
+agentrelay handoff --from codex --to claude --verify auto --confirm
+```
+
+One command. New agent, full briefing, back in the fight.
 
 > **Status: pre-alpha.** Works end to end on Windows, macOS and Linux with the Claude Code and Codex CLIs or their
 > VS Code / Cursor extensions. Measured honestly: it saves **tokens and context** on large sessions, **not money on
