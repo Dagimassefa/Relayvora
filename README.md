@@ -11,9 +11,24 @@ writes a short handoff that labels what is verified and what is not, and starts 
 > VS Code / Cursor extensions. Measured honestly: it saves **tokens and context** on large sessions, **not money on
 > small ones**. See [Does it save anything?](#does-it-save-anything).
 
+## Install
+
+Requirements: Node.js **22.13+** and Git 2.31+.
+
+Download `agentrelay-cli-<version>.tgz` from the
+[latest release](https://github.com/Dagimassefa/Relayvora/releases), then:
+
+```sh
+npm install -g ./agentrelay-cli-0.1.0-alpha.0.tgz
+agentrelay doctor              # checks Node, Git, the store, and finds Claude Code / Codex
+```
+
+Remove it with `npm uninstall -g @agentrelay/cli`. Each release also has a SHA-256 file and a signed build
+attestation; see [verifying a download](docs/releasing.md#signed-draft-releases).
+
 ## Quick start
 
-Requirements: Node.js **22.13+**, Git 2.31+, and pnpm 10 to build from source.
+To build from source instead, you also need pnpm 10:
 
 ```sh
 pnpm install
@@ -261,3 +276,7 @@ CI runs the build, the tests and a CLI smoke test on Windows, macOS and Linux wi
 - [ ] Run the expanded live benchmark matrix and publish its measurements (consumes agent usage)
 - [ ] Publish the first release after the GitHub workflow validates and signs it; see [release instructions](docs/releasing.md)
 - [ ] **Version two:** dedicated VS Code extension
+
+## License
+
+[MIT](LICENSE)

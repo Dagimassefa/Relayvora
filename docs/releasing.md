@@ -53,9 +53,8 @@ GitHub tarballs can be installed directly. Optional registry publication is a se
 npm publish ./release/agentrelay-cli-0.1.0-alpha.0.tgz --access public --tag alpha
 ```
 
-The publisher needs rights to the `@agentrelay` scope. The generated package currently says `UNLICENSED` because
-this repository has no project license; choose and add a license before an open-source release. Dependency license
-notices are included. The workflow does not publish to npm automatically.
+The publisher needs rights to the `@agentrelay` scope. The generated package is MIT-licensed and includes `LICENSE`
+and the bundled dependency license notices. The workflow does not publish to npm automatically.
 
 ## Measurements
 

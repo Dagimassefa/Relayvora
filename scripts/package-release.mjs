@@ -23,12 +23,12 @@ await build({
 fs.chmodSync(path.join(stage, 'dist/bin.js'), 0o755);
 const manifest = {
   name: cli.name, version: cli.version, description: cli.description, type: 'module',
-  bin: cli.bin, engines: cli.engines, license: 'UNLICENSED',
-  files: ['dist', 'README.md', 'CHANGELOG.md', 'THIRD_PARTY_NOTICES.md'],
+  bin: cli.bin, engines: cli.engines, license: 'MIT',
+  files: ['dist', 'README.md', 'CHANGELOG.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md'],
   publishConfig: { access: 'public' },
 };
 fs.writeFileSync(path.join(stage, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-for (const file of ['README.md', 'CHANGELOG.md']) fs.copyFileSync(path.join(root, file), path.join(stage, file));
+for (const file of ['README.md', 'CHANGELOG.md', 'LICENSE']) fs.copyFileSync(path.join(root, file), path.join(stage, file));
 const notices = ['# Bundled dependency licenses', ''];
 for (const pkg of ['commander', 'zod']) {
   const file = path.join(root, 'apps/cli/node_modules', pkg, 'LICENSE');
