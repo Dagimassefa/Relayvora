@@ -6,73 +6,91 @@
  *   normal: in the same session (claude -p --resume), or
  *   relay:  in a fresh session started from an AgentRelay handoff (checkpoint + launch prompt).
  * Both arms do their own step A in their own copy of the task, so step B starts from equivalent states.
- * Usage comes from Claude Code's own JSON output; quality from hidden tests the agents never see.
+ * Usage comes from each agent's own JSON output; quality from hidden tests the agents never see.
  *
- *   node run.mjs [--tasks small-calculator,large-inventory] [--reps 2] [--concurrency 4]
+ *   node run.mjs --agents claude,codex --scenarios warm,cold --reps 3 --dry-run
  */
-import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { runCommand } from '../core/dist/index.js';
+import { parseCodexOutput, parseOptions, sumKnown } from './metrics.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const CLI = path.join(here, '..', '..', 'apps', 'cli', 'dist', 'bin.js');
 const ALLOWED_TOOLS = ['Bash(npm *)', 'Bash(node *)', 'PowerShell(npm *)', 'PowerShell(node *)'];
 
-const args = Object.fromEntries(
-  process.argv.slice(2).reduce((acc, a, i, all) => (a.startsWith('--') ? [...acc, [a.slice(2), all[i + 1]]] : acc), []),
-);
-const taskNames = (args.tasks ?? 'small-calculator,large-inventory').split(',');
-const reps = Number(args.reps ?? 1);
-const concurrency = Number(args.concurrency ?? 4);
+const args = parseOptions(process.argv.slice(2));
+const taskNames = (args.tasks ?? 'small-calculator,large-inventory,medium-csv').split(',');
+const agents = (args.agents ?? 'claude,codex').split(',');
+const scenarios = (args.scenarios ?? 'warm').split(',');
+const reps = Number(args.reps ?? 3);
+const concurrency = Number(args.concurrency ?? 2);
+const coldMinutes = Number(args['cold-minutes'] ?? 65);
 
-const run = (file, argv, opts = {}) =>
-  new Promise((resolve) => {
-    execFile(file, argv, { maxBuffer: 64 * 1024 * 1024, windowsHide: true, ...opts }, (error, stdout, stderr) =>
-      resolve({ code: error ? (typeof error.code === 'number' ? error.code : 1) : 0, stdout, stderr }),
-    );
-  });
+const run = async (file, argv, opts = {}) => {
+  const r = await runCommand(file, argv, { maxOutputBytes: 64 * 1024 * 1024, timeoutMs: 900_000, ...opts });
+  if (r.timedOut || r.cancelled || r.truncated) throw new Error(`Command did not finish completely: ${file}`);
+  return { code: r.exitCode ?? 1, stdout: r.stdout, stderr: r.stderr };
+};
 
 const agentrelay = (argv, cwd, env) => run(process.execPath, [CLI, ...argv], { cwd, env: { ...process.env, ...env } });
 
-async function claudePath() {
+async function agentPath(agent) {
   const r = await agentrelay(['--json', 'doctor'], process.cwd());
-  const check = JSON.parse(r.stdout).checks.find((c) => c.id === 'adapter:claude');
+  const check = JSON.parse(r.stdout).checks.find((c) => c.id === `adapter:${agent}`);
   const p = check?.detail?.probe?.path;
-  if (!p) throw new Error('Claude Code not found (agentrelay doctor)');
+  if (!p) throw new Error(`${agent} not found (agentrelay doctor)`);
   return p;
 }
 
-/** One `claude -p` call; returns Claude Code's own result JSON plus wall time. */
-async function claude(bin, cwd, prompt, resume) {
-  const argv = ['-p', prompt, '--output-format', 'json', '--permission-mode', 'acceptEdits', '--allowedTools', ...ALLOWED_TOOLS];
-  if (resume) argv.push('--resume', resume);
+/** One non-interactive agent invocation; normalizes the provider result plus wall time. */
+async function invokeAgent(bin, agent, cwd, prompt, resume) {
+  // Prompts use stdin so Windows batch shims never interpret task text.
+  const argv = agent === 'codex'
+    ? ['exec', ...(resume ? ['resume', resume] : []), '--json', '--full-auto', '-']
+    : ['-p', '--output-format', 'json', '--permission-mode', 'acceptEdits', '--allowedTools', ...ALLOWED_TOOLS, ...(resume ? ['--resume', resume] : [])];
   const started = new Date();
-  const r = await run(bin, argv, { cwd });
+  const r = await run(bin, argv, { cwd, input: prompt });
+  if (r.code !== 0) throw new Error(`${agent} exited ${r.code}: ${r.stderr.slice(0, 500)}`);
   let json;
   try {
-    json = JSON.parse(r.stdout);
+    json = agent === 'codex' ? parseCodexOutput(r.stdout, resume) : JSON.parse(r.stdout);
   } catch {
-    throw new Error(`claude output was not JSON (exit ${r.code}): ${r.stderr.slice(0, 300)}`);
+    throw new Error(`${agent} output could not be read: ${r.stdout.slice(0, 300)}`);
   }
+  if (json.is_error || !json.session_id) throw new Error(`${agent} did not complete successfully`);
+  json.duration_ms ??= Date.now() - started.getTime();
   return { json, startedAt: started.toISOString(), endedAt: new Date().toISOString() };
 }
 
 /** Per-call input context from the session transcript, deduplicated by message id, within a time window. */
-function callsInWindow(sessionId, fromIso, toIso) {
-  const dir = path.join(os.homedir(), '.claude', 'projects');
-  const file = fs
-    .readdirSync(dir)
-    .map((d) => path.join(dir, d, `${sessionId}.jsonl`))
-    .find((f) => fs.existsSync(f));
+function callsInWindow(sessionId, fromIso, toIso, agent) {
+  const dir = agent === 'codex'
+    ? path.join(process.env.CODEX_HOME ?? path.join(os.homedir(), '.codex'), 'sessions')
+    : path.join(process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude'), 'projects');
+  if (!fs.existsSync(dir)) return [];
+  const file = agent === 'codex'
+    ? fs.readdirSync(dir, { recursive: true }).map(f => path.join(dir, String(f))).find(f => f.endsWith(`${sessionId}.jsonl`))
+    : fs.readdirSync(dir).map(d => path.join(dir, d, `${sessionId}.jsonl`)).find(f => fs.existsSync(f));
   if (!file) return [];
   const calls = new Map();
+  let lastTotal = 0;
   for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
     let o;
     try {
       o = JSON.parse(line);
     } catch {
+      continue;
+    }
+    if (agent === 'codex') {
+      if (o.type !== 'event_msg' || o.payload?.type !== 'token_count') continue;
+      const info = o.payload.info;
+      const total = info?.total_token_usage?.total_tokens ?? 0;
+      if (total <= lastTotal) continue;
+      lastTotal = total;
+      if (o.timestamp >= fromIso && o.timestamp <= toIso && typeof info?.last_token_usage?.input_tokens === 'number') calls.set(total, info.last_token_usage.input_tokens);
       continue;
     }
     if (o.type !== 'assistant' || !o.message?.usage || !o.message.id) continue;
@@ -94,8 +112,8 @@ function usageOf(step, calls, previousCumulativeCost = 0) {
     costUsd: step.json.total_cost_usd === undefined ? null : step.json.total_cost_usd - previousCumulativeCost,
     cumulativeCostUsd: step.json.total_cost_usd ?? null,
     inputTokens: (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0),
-    cacheReadTokens: u.cache_read_input_tokens ?? 0,
-    cacheWriteTokens: u.cache_creation_input_tokens ?? 0,
+    cacheReadTokens: u.cached_input_tokens ?? u.cache_read_input_tokens ?? 0,
+    cacheWriteTokens: step.agent === 'codex' ? null : u.cache_creation_input_tokens ?? 0,
     outputTokens: u.output_tokens ?? 0,
     turns: step.json.num_turns ?? null,
     durationMs: step.json.duration_ms ?? null,
@@ -119,12 +137,16 @@ function costCheck(json, step) {
 }
 
 async function setupRepo(task, dir) {
-  fs.rmSync(dir, { recursive: true, force: true });
+  // Every job has a new directory under a freshly created run root; never remove an existing path.
+  fs.mkdirSync(dir);
   for (const [file, content] of Object.entries(task.files)) {
     fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
     fs.writeFileSync(path.join(dir, file), content);
   }
-  const git = (...a) => run('git', ['-c', 'user.name=bench', '-c', 'user.email=bench@example.com', '-c', 'core.autocrlf=false', ...a], { cwd: dir });
+  const git = async (...a) => {
+    const r = await run('git', ['-c', 'user.name=bench', '-c', 'user.email=bench@example.com', '-c', 'commit.gpgsign=false', '-c', 'core.autocrlf=false', ...a], { cwd: dir });
+    if (r.code !== 0) throw new Error(`Git setup failed: ${r.stderr}`);
+  };
   await git('init', '-q', '-b', 'main');
   await git('add', '-A');
   await git('commit', '-qm', 'task start');
@@ -136,28 +158,29 @@ async function hiddenScore(taskDir, dir, hiddenTest) {
   const r = await run(process.execPath, ['--test', target], { cwd: dir });
   fs.rmSync(target);
   const num = (k) => Number(new RegExp(`^# ${k} (\\d+)`, 'm').exec(r.stdout)?.[1] ?? 0);
-  return { passed: num('pass'), total: num('tests') };
+  const score = { passed: num('pass'), total: num('tests'), exitCode: r.code };
+  if (!score.total) throw new Error(`Hidden tests produced no score: ${r.stderr}${r.stdout}`);
+  return score;
 }
 
-async function runJob(bin, root, task, taskDir, arm, rep, log) {
-  const dir = path.join(root, `${task.name}-${arm}-${rep}`);
+async function runJob(bin, agent, scenario, root, task, taskDir, arm, rep, log) {
+  const dir = path.join(root, `${agent}-${scenario}-${task.name}-${arm}-${rep}`);
   const env = { AGENTRELAY_HOME: path.join(dir, '..', `.agentrelay-home-${task.name}-${arm}-${rep}`) };
   await setupRepo(task, dir);
-  const result = { task: task.name, arm, rep, dir };
+  const result = { task: task.name, agent, scenario, arm, rep, dir };
 
   log(`${task.name} ${arm} #${rep}: step A`);
-  const a = await claude(bin, dir, task.promptA);
-  result.stepA = usageOf(a, callsInWindow(a.json.session_id, a.startedAt, a.endedAt));
+  const a = await invokeAgent(bin, agent, dir, task.promptA);
+  a.agent = agent;
+  result.stepA = usageOf(a, callsInWindow(a.json.session_id, a.startedAt, a.endedAt, agent));
   result.contextAtHandoff = result.stepA.maxCallContext;
 
   log(`${task.name} ${arm} #${rep}: step B (${arm})`);
-  let b;
-  if (arm === 'normal') {
-    b = await claude(bin, dir, task.promptB, a.json.session_id);
-  } else {
+  let nextPrompt = task.promptB;
+  if (arm === 'relay') {
     const t0 = Date.now();
     const cp = await agentrelay(
-      ['--json', 'checkpoint', 'create', '--session', a.json.session_id, '--to', 'claude', '--goal', task.promptB, '--verify', 'auto'],
+      ['--json', 'checkpoint', 'create', '--from', agent, '--session', a.json.session_id, '--to', agent, '--goal', task.promptB, '--verify', 'auto'],
       dir,
       env,
     );
@@ -171,13 +194,21 @@ async function runJob(bin, root, task, taskDir, arm, rep, log) {
       repoFresh: plan.freshness.fresh,
       agentRelayMs: Date.now() - t0,
     };
-    b = await claude(bin, dir, plan.prompt);
+    nextPrompt = plan.prompt;
   }
+  if (scenario === 'cold') {
+    log(`${task.name} ${agent} ${arm} #${rep}: waiting ${coldMinutes} minutes before step B`);
+    const until = Date.now() + coldMinutes * 60_000;
+    while (Date.now() < until) await new Promise(resolve => setTimeout(resolve, Math.min(30_000, until - Date.now())));
+  }
+  result.idleBeforeStepBMs = Date.now() - Date.parse(a.endedAt);
+  const b = await invokeAgent(bin, agent, dir, nextPrompt, arm === 'normal' ? a.json.session_id : undefined);
+  b.agent = agent;
   // Resumed (normal arm): the reported cost includes step A; the fresh relay session starts from zero.
-  result.stepB = usageOf(b, callsInWindow(b.json.session_id, b.startedAt, b.endedAt), arm === 'normal' ? (a.json.total_cost_usd ?? 0) : 0);
-  result.stepB.costCheck = costCheck(b.json, result.stepB);
+  result.stepB = usageOf(b, callsInWindow(b.json.session_id, b.startedAt, b.endedAt, agent), arm === 'normal' ? (a.json.total_cost_usd ?? 0) : 0);
+  result.stepB.costCheck = agent === 'codex' ? 'Codex reports per-turn usage; dollar cost unavailable' : costCheck(b.json, result.stepB);
   result.hidden = await hiddenScore(taskDir, dir, task.hiddenTest);
-  result.totalCostUsd = (result.stepA.costUsd ?? 0) + (result.stepB.costUsd ?? 0);
+  result.totalCostUsd = sumKnown([result.stepA.costUsd, result.stepB.costUsd]);
   log(`${task.name} ${arm} #${rep}: done, B $${result.stepB.costUsd?.toFixed(3)}, hidden ${result.hidden.passed}/${result.hidden.total}`);
   return result;
 }
@@ -205,8 +236,9 @@ const pct = (a, b) => (a === null || b === null || b === 0 ? null : (a - b) / b)
 
 function summarize(results) {
   const out = {};
-  for (const task of [...new Set(results.filter((r) => !r.error).map((r) => r.task))]) {
-    const arm = (name) => results.filter((r) => r.task === task && r.arm === name && !r.error);
+  const group = r => r.agent ? `${r.agent}/${r.scenario}/${r.task}` : r.task;
+  for (const task of [...new Set(results.filter((r) => !r.error).map(group))]) {
+    const arm = (name) => results.filter((r) => group(r) === task && r.arm === name && !r.error);
     const stat = (rows, f) => mean(rows.map(f).filter((v) => v !== null && v !== undefined));
     const side = (rows) => ({
       runs: rows.length,
@@ -240,7 +272,7 @@ function markdown(summary, meta) {
   const money = (v) => (v === null ? '?' : `$${v.toFixed(3)}`);
   const k = (v) => (v === null ? '?' : `${Math.round(v / 1000)}k`);
   const p = (v) => (v === null ? '?' : `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`);
-  const lines = [`# AgentRelay benchmark ${meta.startedAt}`, '', `Agent: Claude Code ${meta.claudeVersion}. Reps per arm: ${meta.reps}.`, ''];
+  const lines = [`# AgentRelay benchmark ${meta.startedAt}`, '', `Agents: ${meta.versions ? JSON.stringify(meta.versions) : `Claude Code ${meta.claudeVersion}`}. Reps per arm: ${meta.reps}.`, '', 'Unknown costs are shown as ?; cold runs record idle time and do not guarantee provider cache expiry.', ''];
   for (const [task, s] of Object.entries(summary)) {
     lines.push(
       `## ${task}`,
@@ -280,31 +312,56 @@ function rescore(file) {
 }
 
 async function main() {
+  if (args.help) {
+    process.stdout.write('Usage: node packages/benchmarks/run.mjs [--tasks small-calculator,large-inventory,medium-csv] [--agents claude,codex] [--scenarios warm,cold] [--reps 3] [--concurrency 2] [--cold-minutes 65] [--run | --dry-run]\nDefault: preview only. --run spends real agent usage. --rescore <file.json> recalculates saved reports without agent calls.\n');
+    return;
+  }
   if (args.rescore) return rescore(path.resolve(args.rescore));
-  const bin = await claudePath();
-  const claudeVersion = (await run(bin, ['--version'])).stdout.trim();
+  const tasks = [];
+  for (const name of taskNames) {
+    const taskDir = path.join(here, 'tasks', name);
+    const task = (await import(pathToFileURL(path.join(taskDir, 'task.mjs')).href)).default;
+    if (!fs.existsSync(path.join(taskDir, task.hiddenTest))) throw new Error(`Missing hidden test for ${name}`);
+    tasks.push({ task, taskDir });
+  }
+  const plannedRuns = taskNames.length * agents.length * scenarios.length * reps * 2;
+  if (!args.run || args['dry-run']) {
+    process.stdout.write(`${JSON.stringify({ dryRun: true, tasks: taskNames, agents, scenarios, reps, concurrency, coldMinutes, plannedRuns, agentCallsMinimum: plannedRuns * 2, notice: 'Preview only. Pass --run to spend real agent usage.' }, null, 2)}\n`);
+    return;
+  }
+  const bins = {};
+  const versions = {};
+  for (const agent of agents) {
+    bins[agent] = await agentPath(agent);
+    versions[agent] = (await run(bins[agent], ['--version'])).stdout.trim();
+  }
   const startedAt = new Date().toISOString();
   const root = path.join(os.tmpdir(), 'agentrelay-bench', startedAt.replace(/[:.]/g, '-'));
   fs.mkdirSync(root, { recursive: true });
   const log = (m) => process.stderr.write(`[${new Date().toISOString().slice(11, 19)}] ${m}\n`);
-  log(`Claude Code ${claudeVersion}; work dir ${root}`);
+  log(`Agents ${JSON.stringify(versions)}; ${plannedRuns} runs; work dir ${root}`);
 
   const jobs = [];
-  for (const name of taskNames) {
-    const taskDir = path.join(here, 'tasks', name);
-    const task = (await import(pathToFileURL(path.join(taskDir, 'task.mjs')).href)).default;
-    for (let rep = 1; rep <= reps; rep++) for (const arm of ['normal', 'relay']) jobs.push(() => runJob(bin, root, task, taskDir, arm, rep, log));
+  for (const { task, taskDir } of tasks) {
+    for (const agent of agents) for (const scenario of scenarios) for (let rep = 1; rep <= reps; rep++) for (const arm of ['normal', 'relay']) {
+      jobs.push(async () => {
+        try { return await runJob(bins[agent], agent, scenario, root, task, taskDir, arm, rep, log); }
+        catch (error) { return { task: task.name, agent, scenario, arm, rep, error: String(error.message ?? error) }; }
+      });
+    }
   }
   const results = await pool(jobs, concurrency);
   const summary = summarize(results);
-  const meta = { startedAt, claudeVersion, reps, tasks: taskNames };
+  const meta = { startedAt, versions, reps, tasks: taskNames, scenarios, coldMinutes, concurrency };
   const stamp = startedAt.replace(/[:.]/g, '-');
+  fs.mkdirSync(path.join(here, 'results'), { recursive: true });
   fs.writeFileSync(path.join(here, 'results', `${stamp}.json`), JSON.stringify({ meta, summary, results }, null, 2));
   const md = markdown(summary, meta);
   fs.writeFileSync(path.join(here, 'results', `${stamp}.md`), md);
   process.stdout.write(`${md}\n`);
   const errors = results.filter((r) => r.error);
   if (errors.length) process.stderr.write(`\n${errors.length} run(s) failed:\n${errors.map((e) => `- ${e.error}`).join('\n')}\n`);
+  if (errors.length || results.some(r => !r.error && (r.hidden.exitCode !== 0 || r.hidden.passed !== r.hidden.total))) process.exitCode = 1;
 }
 
 main().catch((error) => {

@@ -89,6 +89,7 @@ agentrelay watch --bell        # in a spare terminal; Ctrl+C to stop
 | Command | What it does |
 | --- | --- |
 | `agentrelay` | Home screen: project, sessions, **relay radar**, last relay, stats, suggested commands. Read-only. |
+| `agentrelay hooks install` / `status` / `uninstall` | Saves checkpoints automatically from agent hooks: limit hit, compaction, session end, turns. |
 | `agentrelay watch [--interval 60] [--bell]` | Alerts the moment a relay pays off: an agent hit or nears its limit, or a large session went cold. |
 | `agentrelay doctor` | Checks Node, platform/WSL, Git, the store, the project, and each agent (PATH or editor extension). |
 | `agentrelay init` | Registers the project (Git root) and creates `.agentrelay/`, which ignores itself in Git. |
@@ -96,12 +97,38 @@ agentrelay watch --bell        # in a spare terminal; Ctrl+C to stop
 | `agentrelay handoff --to <agent> [options]` | Creates a checkpoint and shows the card; `--confirm` launches the agent. |
 | `agentrelay checkpoint create [options]` | Same capture as `handoff`, without the launch options. |
 | `agentrelay checkpoint list` / `show <id>` | Lists checkpoints; prints a handoff (`--budget` re-renders it, `--format json`). |
+| `agentrelay checkpoint delete <id> [--dry-run] [-y]` | Deletes a checkpoint in this project, its handoff, evidence and usage; asks first. |
+| `agentrelay checkpoint prune [--days 30] [--dry-run] [-y]` | Deletes expired checkpoints in this project using its retention setting, or the given age; asks first. |
 | `agentrelay launch <id> [--to <agent>]` | Starts the agent with an existing, possibly edited, handoff. |
 | `agentrelay report [id] [--reverify]` | Measures a relay: the session that continued it, context per call, onboarding, checks. |
 | `agentrelay export <id> [--out file]` | Exports a checkpoint, re-redacted. Asks before writing; never overwrites without `--force`. |
 | `agentrelay config show` | Shows the data directory, database path and project config. |
 
 Global flags: `--json` (machine-readable), `-C/--cwd <dir>`, `-v/--verbose`, `--no-color`.
+
+### Automatic checkpoints (hooks)
+
+```sh
+agentrelay hooks install            # Claude Code (this project) + Codex; --scope user for all projects; --dry-run to preview
+```
+
+The handoff is then waiting before you need it. Claude Code runs AgentRelay on:
+
+| Event | When | Checkpoint |
+| --- | --- | --- |
+| `StopFailure` (`rate_limit`) | a turn ends because of a usage or rate limit | always, tagged `auto:limit` |
+| `PreCompact` | just before the conversation is compacted | always |
+| `SessionEnd` | the session ends | always |
+| `Stop` | the end of a turn | at most every 15 min (`--every`) |
+
+Codex runs it through its `notify` setting at the end of each turn (throttled the same way). Hooks hand the work to a
+background process and return in well under a second, so they never slow the agent; problems go to `hooks.log` in the
+data directory. The newest 5 automatic checkpoints per session are kept (`--keep`). When the relay radar or `watch`
+flags a limit and a hook already saved the latest state, the suggested command is simply `agentrelay launch <id>`.
+
+The installer merges into existing settings and leaves other hooks untouched, writes Claude Code hooks in exec form (no
+shell, works on Windows), keeps `.claude/settings.local.json` out of Git, and never replaces an existing Codex
+`notify` program. Claude Code runs hooks only in folders you have accepted in its workspace trust prompt.
 
 ### Handoff and checkpoint options
 
@@ -168,6 +195,21 @@ go to stderr, so `agentrelay handoff ... > handoff.md` captures only the Markdow
 
 ## Privacy and data
 
+Checkpoint retention defaults to **30 days**, applied for the current project after a new checkpoint is saved.
+Set `retentionDays` in `.agentrelay/config.json` to a positive number of days, or `null` to keep everything.
+To preview or apply cleanup immediately:
+
+```sh
+agentrelay checkpoint prune --dry-run
+agentrelay checkpoint prune --yes
+agentrelay checkpoint delete <id> --dry-run
+agentrelay checkpoint delete <id> --yes
+```
+
+Cleanup removes AgentRelay's checkpoint, handoff file, evidence and usage records. Vendor session transcripts
+and audit events are kept. Automatic hook checkpoints also obey their per-session `--keep` limit.
+Retention is age-based, so it also removes edited handoff files once their checkpoint expires; export anything you want to keep.
+
 - **Local only.** Nothing is uploaded and there is no telemetry.
 - **Global store:** SQLite at `%LOCALAPPDATA%\agentrelay` (Windows), `~/Library/Application Support/agentrelay`
   (macOS), `$XDG_DATA_HOME/agentrelay` or `~/.local/share/agentrelay` (Linux). Override with `AGENTRELAY_HOME`.
@@ -195,9 +237,12 @@ docs/                      architecture and security notes
 ## Development
 
 ```sh
-pnpm test        # vitest against source, no build needed (180 tests)
+pnpm test        # vitest against source, no build needed
 pnpm build       # tsc -b with project references
-node packages/benchmarks/run.mjs --tasks small-calculator --reps 2   # benchmark (spends real agent usage)
+pnpm bench:plan  # preview benchmark jobs without agent calls
+node packages/benchmarks/run.mjs --tasks small-calculator --agents claude --reps 3 --run # spends real agent usage
+pnpm release:pack  # standalone npm tarball + SHA-256 in release/
+pnpm release:smoke # offline install and CLI lifecycle checks
 ```
 
 CI runs the build, the tests and a CLI smoke test on Windows, macOS and Linux with Node 22 and 24.
@@ -209,5 +254,10 @@ CI runs the build, the tests and a CLI smoke test on Windows, macOS and Linux wi
 - [x] Launching: `handoff --confirm` and `launch`, via the CLI or the editor-extension copy, with a freshness check
 - [x] Measurement: `report`, onboarding and payback, home-screen stats
 - [x] Benchmark harness with small and large tasks and hidden-test scoring
-- [ ] "Cold resume" benchmark (switching after the old session's cache has expired), more tasks and runs, Codex arms
-- [ ] VS Code extension, retention and delete commands, signed releases
+- [x] Relay radar, `watch`, and automatic checkpoints from Claude Code hooks and Codex notify
+- [x] Retention enforcement and confirmed delete/prune commands with previews
+- [x] Cold-resume benchmark support, Claude/Codex arms, three tasks and configurable repetitions
+- [x] Standalone release packaging, checksums, installation smoke tests and a signed-attestation release workflow
+- [ ] Run the expanded live benchmark matrix and publish its measurements (consumes agent usage)
+- [ ] Publish the first release after the GitHub workflow validates and signs it; see [release instructions](docs/releasing.md)
+- [ ] **Version two:** dedicated VS Code extension

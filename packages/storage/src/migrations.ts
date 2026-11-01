@@ -123,6 +123,14 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX usage_events_checkpoint_idx ON usage_events(checkpoint_id, role);
     `,
   },
+  {
+    version: 4,
+    name: 'checkpoint-trigger',
+    sql: `
+      ALTER TABLE checkpoints ADD COLUMN trigger TEXT NOT NULL DEFAULT 'manual';
+      CREATE INDEX checkpoints_session_idx ON checkpoints(source_session_id, trigger, created_at);
+    `,
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.version;

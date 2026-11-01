@@ -38,9 +38,20 @@ No shell strings, ever. See `planSpawn` in `packages/core/src/exec.ts` for the W
 - Only through each agent's documented CLI (`claude [prompt]`, `codex [PROMPT]`), with an argument array and no
   shell; never by writing to vendor session files or databases.
 - Always confirmed by the user (`--yes` required without a terminal). `--dry-run` shows the exact command.
-- The prompt is a fixed pointer to the handoff file inside the project; no transcript text is put on a command line.
+- The prompt includes the reviewed, re-redacted handoff when the command-line size permits; otherwise it points to the handoff file inside the project. As with any CLI argument, inline handoffs can be visible to local process inspection.
 - `audit_events` records each launch: agent, executable, version, and SHA-256 of the prompt and handoff file.
 
-## Open items before alpha
+## Retention and deletion
 
-- Retention and delete commands (`retentionDays` exists in config but is not enforced yet).
+- Project `retentionDays` defaults to 30 and is applied after a successful checkpoint save; null keeps all checkpoints.
+- `checkpoint delete` and `checkpoint prune` support dry runs and require confirmation or `--yes`.
+- Cleanup is scoped to the project and removes checkpoint bodies, evidence, usage records and exact handoff files. Redirected state directories are rejected.
+- Vendor session files are never deleted. Audit events remain as an operation history; deletion is logical removal, not a secure disk erase or SQLite page scrub.
+- Automatic hook checkpoints additionally keep only the configured newest checkpoints per session.
+- Cleanup failures after checkpoint creation are recorded as `checkpoint.retention.failed` audit events; the new checkpoint remains available.
+
+## Release integrity
+
+The release workflow tests installation on Windows, macOS and Linux with Node 22/24, builds a standalone tarball,
+and generates a GitHub signed build attestation. Checksums help detect damaged downloads; verify the attestation
+against the repository identity before trusting a distributed package. See [releasing](../releasing.md).

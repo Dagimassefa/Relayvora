@@ -41,6 +41,8 @@ export interface BuildCheckpointInput {
   budgetTokens: number;
   /** Problems found while collecting inputs (unreadable transcript, session from another directory...). */
   extraWarnings?: string[];
+  /** What made the checkpoint; hooks pass their event. */
+  trigger?: 'manual' | 'pre-compact' | 'session-end' | 'turn' | 'limit';
 }
 
 /** Per-item caps on what is stored in a checkpoint. The renderer applies the token budget later. */
@@ -266,6 +268,7 @@ export function buildCheckpoint(input: BuildCheckpointInput): Checkpoint {
   const draft: CheckpointInput = {
     schemaVersion: CHECKPOINT_SCHEMA_VERSION,
     id: input.id,
+    trigger: input.trigger ?? 'manual',
     createdAt: at,
     project: {
       root: git?.root ?? input.projectRoot,

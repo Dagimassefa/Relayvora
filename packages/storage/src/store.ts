@@ -44,6 +44,7 @@ export interface CheckpointRow {
   estimatedTokens: number | null;
   goal: string | null;
   createdAt: string;
+  trigger: string;
 }
 
 export interface ReceivingUsage {
@@ -229,8 +230,8 @@ export class Store {
       this.db
         .prepare(
           `INSERT INTO checkpoints (id, project_id, task_id, source_provider, source_session_id, schema_version,
-             body_json, sha256, created_at, target_provider, estimated_tokens, goal)
-           VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             body_json, sha256, created_at, target_provider, estimated_tokens, goal, trigger)
+           VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           cp.id,
@@ -244,6 +245,7 @@ export class Store {
           cp.handoff.targetProvider,
           cp.handoff.estimatedTokens,
           cp.task.goal.text.split('\n')[0]!.slice(0, 200),
+          cp.trigger,
         );
       const insertEvidence = this.db.prepare(
         `INSERT INTO evidence (id, checkpoint_id, type, path, sha256, command, exit_code, status, captured_at, excerpt_sha256)
@@ -371,11 +373,37 @@ export class Store {
     return parsed.data;
   }
 
+  /** Removes a checkpoint and everything recorded against it (evidence, usage). */
+  deleteCheckpoint(id: string): boolean {
+    return this.transaction(() => {
+      this.db.prepare('DELETE FROM usage_events WHERE checkpoint_id = ?').run(id);
+      this.db.prepare('DELETE FROM evidence WHERE checkpoint_id = ?').run(id);
+      return Number(this.db.prepare('DELETE FROM checkpoints WHERE id = ?').run(id).changes) > 0;
+    });
+  }
+
+  /** Checkpoints older than the retention cutoff, scoped to one project. */
+  expiredCheckpoints(projectId: string, before: string): Array<{ id: string; createdAt: string }> {
+    return this.db.prepare('SELECT id, created_at AS createdAt FROM checkpoints WHERE project_id = ? AND created_at < ? ORDER BY created_at')
+      .all(projectId, before) as unknown as Array<{ id: string; createdAt: string }>;
+  }
+
+  /** Automatic (hook-made) checkpoints of one session, newest first. */
+  autoCheckpoints(sessionId: string, provider?: string, projectId?: string): Array<{ id: string; createdAt: string; trigger: string }> {
+    const filters = ["source_session_id = ?", "trigger <> 'manual'"];
+    const args = [sessionId];
+    if (provider) { filters.push('source_provider = ?'); args.push(provider); }
+    if (projectId) { filters.push('project_id = ?'); args.push(projectId); }
+    return this.db
+      .prepare(`SELECT id, created_at AS createdAt, trigger FROM checkpoints WHERE ${filters.join(' AND ')} ORDER BY created_at DESC`)
+      .all(...args) as unknown as Array<{ id: string; createdAt: string; trigger: string }>;
+  }
+
   listCheckpoints(projectId: string, limit = 20): CheckpointRow[] {
     return this.db
       .prepare(
         `SELECT id, source_provider AS sourceProvider, source_session_id AS sourceSessionId,
-                target_provider AS targetProvider, estimated_tokens AS estimatedTokens, goal, created_at AS createdAt
+                target_provider AS targetProvider, estimated_tokens AS estimatedTokens, goal, created_at AS createdAt, trigger
          FROM checkpoints WHERE project_id = ? ORDER BY created_at DESC LIMIT ?`,
       )
       .all(projectId, limit) as unknown as CheckpointRow[];

@@ -40,7 +40,7 @@ export function renderConfig(r: ConfigResult, t: Theme = PLAIN): string {
       '',
       `  ${label(t, 'agents', 9)}${c.providers.map((p) => providerName(t, p)).join(t.fg('gray', ` ${t.sym.dot} `))}`,
       `  ${label(t, 'budget', 9)}${t.bold(c.handoffBudgetTokens.toLocaleString('en-US'))} ${t.dim('tokens per handoff (estimated)')}`,
-      `  ${label(t, 'retention', 9)}${c.retentionDays === null ? 'forever' : `${c.retentionDays} days`} ${t.dim('(not enforced yet)')}`,
+      `  ${label(t, 'retention', 9)}${c.retentionDays === null ? 'forever' : `${c.retentionDays} days`} ${t.dim('(applied after checkpoint creation)')}`,
     );
   }
   lines.push('');

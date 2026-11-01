@@ -34,7 +34,7 @@ Enforced by `packages/core/src/checkpoint.ts`:
   non-zero exit code. Anything else must be `unknown` or `not-run`. Captured artifacts (diffs, files,
   transcripts) use `recorded`, which makes no claim about correctness.
 
-## Checkpoint pipeline (Phase 2)
+## Checkpoint pipeline
 
 ```
 session file ──adapter.readTranscript──► TranscriptDigest ┐
@@ -53,3 +53,15 @@ git working tree ──collectGitSnapshot──► GitSnapshot      ├─► bu
   Output is deterministic for a given checkpoint and budget.
 - Token counts are estimates (chars/4) and are labelled as such. Session usage comes from the agent's own
   records (`cost-state` for Claude Code, cumulative `token_count` events for Codex) and is labelled `provider-reported`.
+
+## Lifecycle and distribution
+
+- Hook events normalize into the same checkpoint service as manual captures. Turn hooks are throttled; compaction,
+  limits and session end force a capture. Background workers isolate checkpoint work from the agent's hook deadline.
+- After a checkpoint and its handoff file are saved, project retention removes older records and handoffs.
+  Explicit delete/prune commands use the same removal routine, with project scoping and user confirmation.
+- `scripts/package-release.mjs` bundles the CLI and workspace dependencies into one ESM entry point. Its generated
+  npm tarball has no runtime package dependencies; Node and Git remain external requirements. Hook installation
+  resolves the bundled entry point from `import.meta.url`, so installed hooks use the installed copy.
+- The release workflow verifies the installable package across the platform matrix before producing an attested artifact
+  and a draft GitHub release. The dedicated editor extension is reserved for version two.

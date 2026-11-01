@@ -10,12 +10,15 @@ import {
   summarize,
 } from './commands/checkpoint.js';
 import { renderConfig, runConfigShow } from './commands/config.js';
+import { renderCleanup, runCleanup, type CleanupOptions } from './commands/cleanup.js';
 import { renderDoctor, runDoctor } from './commands/doctor.js';
 import { type ExportOptions, runExport } from './commands/export.js';
 import { renderHome, runHome } from './commands/home.js';
 import { renderInit, runInit } from './commands/init.js';
 import { renderReport, runReport } from './commands/report.js';
 import { runWatch } from './commands/watch.js';
+import { renderHooksInstall, renderHooksStatus, runHooksInstall, runHooksStatus, runHooksUninstall, type HooksFlags } from './commands/hooks.js';
+import { handleHookEvent, logHookProblem, parseClaudeHook, parseCodexNotify, spawnHookWorker, type HookEvent } from './hooks.js';
 import { renderSessions, runSessions } from './commands/sessions.js';
 import { copyToClipboard } from './clipboard.js';
 import { type CliContext, createContext, selectAdapters } from './context.js';
@@ -171,6 +174,26 @@ async function launchWithUi(ctx: CliContext, cp: Checkpoint, target: string | nu
   );
 }
 
+/** Reads stdin to the end, giving up after a few seconds so a hook can never hang. */
+function readStdin(timeoutMs = 3000): Promise<string> {
+  return new Promise((resolve) => {
+    if (process.stdin.isTTY) return resolve('');
+    let data = '';
+    const done = () => resolve(data);
+    const timer = setTimeout(done, timeoutMs);
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (d) => (data += d));
+    process.stdin.on('end', () => {
+      clearTimeout(timer);
+      done();
+    });
+    process.stdin.on('error', () => {
+      clearTimeout(timer);
+      done();
+    });
+  });
+}
+
 function styleHelp(program: Command, t: Theme): void {
   program.configureHelp({
     styleTitle: (s) => t.bold(t.fg('violet', s)),
@@ -238,6 +261,25 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
     });
 
   const checkpoint = program.command('checkpoint').description('create and inspect checkpoints');
+
+  checkpoint.command('delete <id>')
+    .description('delete a checkpoint in this project, its handoff, evidence and usage')
+    .option('--dry-run', 'preview without deleting')
+    .option('-y, --yes', 'delete without asking')
+    .action(async (id: string, flags: CleanupOptions, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      emit(opts, await runCleanup(ctx, id, flags), renderCleanup);
+    });
+
+  checkpoint.command('prune')
+    .description('delete expired checkpoints in this project using its retention setting')
+    .option('--days <days>', 'override the configured retention age', parsePositiveInt)
+    .option('--dry-run', 'preview without deleting')
+    .option('-y, --yes', 'delete without asking')
+    .action(async (flags: CleanupOptions, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      emit(opts, await runCleanup(ctx, null, flags), renderCleanup);
+    });
 
   addCheckpointOptions(
     checkpoint
@@ -380,6 +422,64 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
         });
       } finally {
         process.off('SIGINT', onSigint);
+      }
+    });
+
+  const hooks = program.command('hooks').description('save checkpoints automatically from agent hooks (limit hit, compaction, session end, turns)');
+  const hookOptions = (cmd: Command) =>
+    cmd
+      .addOption(new Option('--agent <agent>', 'which agent').choices(['claude', 'codex', 'all']).default('all'))
+      .addOption(new Option('--scope <scope>', 'Claude Code settings: this project (local, not committed) or your user').choices(['local', 'user']).default('local'))
+      .option('--dry-run', 'show what would change without writing');
+  hookOptions(hooks.command('install').description('install the hooks'))
+    .option('--every <minutes>', 'minimum minutes between end-of-turn checkpoints', parsePositiveInt, 15)
+    .option('--keep <n>', 'automatic checkpoints kept per session', parsePositiveInt, 5)
+    .option('--verify', 'also run the project checks (slower)')
+    .action(async (flags: HooksFlags, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      emit(opts, await runHooksInstall(ctx, flags), (r) => renderHooksInstall(r, ui.out));
+    });
+  hooks
+    .command('status')
+    .description('show where AgentRelay hooks are installed')
+    .action(async (_o, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      emit(opts, await runHooksStatus(ctx), (r) => renderHooksStatus(r, ui.out));
+    });
+  hookOptions(hooks.command('uninstall').description('remove the hooks, leaving any other hooks untouched')).action(async (flags: HooksFlags, cmd: Command) => {
+    const { opts, ctx } = ctxFor(cmd);
+    const r = await runHooksUninstall(ctx, flags);
+    emit(opts, r, () => (r.removed.length ? r.removed.map((f) => `  ${statusIcon(ui.out, 'ok')} removed from ${f}`).join('\n') : '  nothing to remove'));
+  });
+
+  // Called by the agents' hooks: parse the event, start a background checkpoint, return at once.
+  program
+    .command('hook <agent> [payload]', { hidden: true })
+    .option('--every <minutes>', '', parsePositiveInt, 15)
+    .option('--keep <n>', '', parsePositiveInt, 5)
+    .option('--verify')
+    .action(async (agent: string, payload: string | undefined, flags: { every: number; keep: number; verify?: boolean }, cmd: Command) => {
+      const { ctx } = ctxFor(cmd);
+      try {
+        const event = agent === 'claude' ? parseClaudeHook(await readStdin()) : agent === 'codex' ? parseCodexNotify(payload ?? '') : null;
+        if (event) spawnHookWorker(event, { everyMinutes: flags.every, keep: flags.keep, verify: Boolean(flags.verify) });
+      } catch (error) {
+        logHookProblem(ctx.dataDir, `hook ${agent}: ${(error as Error).message}`);
+      }
+    });
+  program
+    .command('hook-run', { hidden: true })
+    .requiredOption('--event <json>')
+    .option('--every <minutes>', '', parsePositiveInt, 15)
+    .option('--keep <n>', '', parsePositiveInt, 5)
+    .option('--verify')
+    .action(async (flags: { event: string; every: number; keep: number; verify?: boolean }, cmd: Command) => {
+      const { ctx } = ctxFor(cmd);
+      try {
+        const r = await handleHookEvent(ctx, JSON.parse(flags.event) as HookEvent, { everyMinutes: flags.every, keep: flags.keep, verify: Boolean(flags.verify) });
+        if (r.action === 'created') logHookProblem(ctx.dataDir, `ok ${r.reason} -> ${r.checkpointId}${r.pruned?.length ? ` (pruned ${r.pruned.length})` : ''}`);
+      } catch (error) {
+        logHookProblem(ctx.dataDir, `hook-run: ${(error as Error).message}`);
       }
     });
 

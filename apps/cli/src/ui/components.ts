@@ -150,7 +150,7 @@ export function relativeTime(iso: string, now = Date.now()): string {
   ];
   let unit: [number, string] = units[0]!;
   for (const u of units) if (seconds >= u[0]) unit = u;
-  return `${Math.floor(seconds / unit[0])}${unit[1]} ago`;
+  return `${Math.max(1, Math.floor(seconds / unit[0]))}${unit[1]} ago`;
 }
 
 /** ANSI-aware table. Column widths are computed from visible text. */

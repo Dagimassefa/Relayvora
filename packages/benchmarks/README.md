@@ -11,9 +11,29 @@ the same session? `run.mjs` measures it on matched two-step tasks:
 - Usage and cost come from Claude Code's own JSON output.
 
 ```sh
-node run.mjs --tasks small-calculator,large-inventory --reps 2   # spends real usage
+node run.mjs --tasks small-calculator,large-inventory,medium-csv --agents claude,codex --scenarios warm,cold --reps 3 --dry-run
+node run.mjs --tasks small-calculator --agents claude --scenarios warm --reps 3 --run # spends real usage
+node run.mjs --tasks large-inventory --agents claude,codex --scenarios cold --cold-minutes 65 --reps 3 --run
 node run.mjs --rescore results/<file>.json                         # re-score a saved run, free
 ```
+
+Run from this directory after `pnpm build`, or use `node packages/benchmarks/run.mjs ...` from the repository root.
+With no `--run`, the harness only prints a job plan. Defaults: three tasks, both agents, warm runs, three repetitions,
+two concurrent jobs. `medium-csv` adds a parser-to-records task with hidden tests for malformed input and prototype keys.
+Each job starts in a new temporary Git repository. Failed agent calls or hidden acceptance tests make the harness exit nonzero;
+partial results and job errors are saved for inspection. Ctrl+C stops a run; scratch directories remain for debugging.
+
+Cold scenarios wait the configured idle period after step A (and checkpoint preparation for relay arms) before step B.
+They record the actual idle interval and provider-reported cache usage. Idle time is an experimental condition, not proof
+of cache eviction: providers control their cache lifetimes. These long runs may take hours, depending on the matrix and concurrency.
+
+Codex runs through [`codex exec --json` and `codex exec resume`](https://developers.openai.com/codex/noninteractive)
+in `--full-auto` mode. Prompts use stdin. Token totals come from completed-turn events; per-call context comes from local
+session records, deduplicated by cumulative token totals. Input already includes cached input. Codex does not report dollar
+costs, so those values remain **unknown (`?`)**, including combined cost. Claude resumed costs still subtract step A's cumulative cost.
+Results are grouped by agent, scenario and task; they never average different providers or warm/cold conditions together.
+
+**No cold-resume, Codex, or medium-CSV measurements have been published yet.** The results below remain the original live runs.
 
 **Accounting trap (fixed):** with `--resume`, Claude Code's `total_cost_usd` and `modelUsage` are cumulative for the
 whole session while `usage` covers only the new call. The harness subtracts step A's cost and records a `costCheck`

@@ -25,6 +25,7 @@ import { collectCommitsSince, collectGitSnapshot, resolveSince } from '@agentrel
 import type { Store } from '@agentrelay/storage';
 import { type CliContext, openStore, selectAdapters } from './context.js';
 import { ensureProject, handoffPath } from './project.js';
+import { enforceRetention } from './retention.js';
 import { SILENT_PROGRESS, type Progress } from './ui/progress.js';
 
 export interface CreateCheckpointOptions extends UserTaskInput {
@@ -44,6 +45,8 @@ export interface CreateCheckpointOptions extends UserTaskInput {
   commits?: boolean;
   /** Include commits since this time ("2h", "3d", an ISO date...). Defaults to the session start. */
   commitsSince?: string;
+  /** What made the checkpoint (hooks pass their event). */
+  trigger?: 'manual' | 'pre-compact' | 'session-end' | 'turn' | 'limit';
   /** Reports each step (spinner on stderr in the CLI). */
   progress?: Progress;
 }
@@ -266,13 +269,14 @@ export async function createCheckpoint(ctx: CliContext, options: CreateCheckpoin
       targetProvider: options.to ?? null,
       budgetTokens: options.budget ?? project.config.handoffBudgetTokens,
       extraWarnings,
+      ...(options.trigger ? { trigger: options.trigger } : {}),
     });
     const { checkpoint, render } = withRenderedHandoff(built);
 
     store.saveCheckpoint(checkpoint, project.record.id);
     if (session) store.upsertSession(session, project.record.id);
 
-    // The handoff file is what the user reviews and edits, and what Phase 3 will hand to the target agent.
+    // The handoff file is what the user reviews and edits before launching the target agent.
     const handoffFile = handoffPath(project.root, checkpoint.id);
     fs.mkdirSync(path.dirname(handoffFile), { recursive: true });
     fs.writeFileSync(handoffFile, checkpoint.handoff.prompt ?? '');
@@ -290,6 +294,12 @@ export async function createCheckpoint(ctx: CliContext, options: CreateCheckpoin
         handoffFile,
       },
     });
+    // Run only after the new checkpoint is safely saved. Cleanup failure must not hide that success.
+    try {
+      enforceRetention(store, project.root, project.record.id, project.config.retentionDays);
+    } catch (error) {
+      store.recordAudit({ action: 'checkpoint.retention.failed', projectId: project.record.id, details: { error: (error as Error).message } });
+    }
     return { checkpoint, render, handoffFile, session };
   } finally {
     store.close();

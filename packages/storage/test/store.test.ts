@@ -122,7 +122,7 @@ describe('Store checkpoints', () => {
     const store = track(Store.open(':memory:', { migrate: false }));
     store.migrate(MIGRATIONS.slice(0, 1));
     expect(store.schemaVersion()).toBe(1);
-    expect(store.migrate().map((m) => m.version)).toEqual([2, 3]);
+    expect(store.migrate().map((m) => m.version)).toEqual([2, 3, 4]);
     expect(store.schemaVersion()).toBe(LATEST_SCHEMA_VERSION);
   });
 });

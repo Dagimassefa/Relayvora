@@ -14,7 +14,7 @@ export const ProjectConfig = z.object({
   providers: z.array(z.string()).default(['claude', 'codex']),
   /** Default token budget for generated handoffs (estimated tokens). */
   handoffBudgetTokens: z.number().int().positive().default(4000),
-  /** Transcript and checkpoint retention in days; null keeps everything. */
+  /** AgentRelay checkpoint retention in days; null keeps everything. Vendor transcripts are never deleted. */
   retentionDays: z.number().int().positive().nullable().default(30),
 });
 export type ProjectConfig = z.infer<typeof ProjectConfig>;

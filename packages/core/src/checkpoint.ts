@@ -91,6 +91,8 @@ export const Checkpoint = z
   .object({
     schemaVersion: z.literal(CHECKPOINT_SCHEMA_VERSION),
     id: z.string().min(1),
+    /** What made this checkpoint: a person, or an agent hook (pre-compact, session-end, turn, limit). */
+    trigger: z.enum(['manual', 'pre-compact', 'session-end', 'turn', 'limit']).default('manual'),
     createdAt: z.iso.datetime({ offset: true }),
     project: z.object({
       root: z.string().min(1),

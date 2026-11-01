@@ -1,5 +1,5 @@
 import { assessRelay, type RelayAssessment, type SessionSummary, type TranscriptDigest } from '@agentrelay/core';
-import type { CliContext } from './context.js';
+import { type CliContext, openStore } from './context.js';
 import { compact, providerChip, relativeTime, statusIcon } from './ui/components.js';
 import type { Theme } from './ui/theme.js';
 
@@ -14,6 +14,7 @@ export function renderRadar(radar: AgentRadar[], t: Theme): string[] {
     const text = a.verdict === 'relay' ? t.bold(t.fg('amber', a.headline)) : t.dim(a.headline);
     lines.push(`  ${icon} ${providerChip(t, r.provider)} ${t.dim(`${size}${relativeTime(r.session.updatedAt)}`)}  ${text}`);
     for (const reason of a.reasons) lines.push(`      ${t.dim(reason)}`);
+    if (r.ready) lines.push(`      ${statusIcon(t, 'ok')} ${t.dim(`handoff already saved by a hook (auto:${r.ready.trigger}, ${relativeTime(r.ready.createdAt)})`)}`);
     if (a.verdict === 'relay') lines.push(`      ${t.fg('cyan', t.sym.arrow)} ${t.bold(r.suggestion)}`);
   }
   return lines;
@@ -25,6 +26,8 @@ export interface AgentRadar {
   session: SessionSummary;
   contextTokens: number | null;
   assessment: RelayAssessment;
+  /** A hook-made checkpoint that already holds the latest state, ready to launch. */
+  ready: { id: string; createdAt: string; trigger: string } | null;
   /** The command that relays this session's work to the other agent. */
   suggestion: string;
 }
@@ -45,6 +48,25 @@ async function cachedDigest(session: SessionSummary, read: () => Promise<Transcr
 }
 
 /**
+ * An automatic (hook-made) checkpoint that already captures the session's latest state, so the relay
+ * can launch at once. "Latest" = saved no earlier than two minutes before the session's last activity.
+ */
+function readyCheckpoint(ctx: CliContext, session: SessionSummary, lastActivityAt: string | null): AgentRadar['ready'] {
+  let store;
+  try {
+    store = openStore(ctx);
+    const latest = store.autoCheckpoints(session.id)[0];
+    if (!latest) return null;
+    const activity = Date.parse(lastActivityAt ?? session.updatedAt);
+    return Date.parse(latest.createdAt) >= activity - 2 * 60_000 ? latest : null;
+  } catch {
+    return null;
+  } finally {
+    store?.close();
+  }
+}
+
+/**
  * For each agent, the latest session in this project and whether relaying it now beats continuing
  * (usage limit hit, near a limit, large and cold, compacted). Read-only.
  */
@@ -60,13 +82,17 @@ export async function relayRadar(ctx: CliContext, projectRoot: string, now: Date
     const contextTokens = digest.turns?.lastContextTokens ?? null;
     const agent = NAMES[adapter.id] ?? adapter.displayName;
     const other = ctx.adapters.find((a) => a.id !== adapter.id)?.id ?? adapter.id;
+    const ready = readyCheckpoint(ctx, session, digest.health.lastActivityAt);
     out.push({
       provider: adapter.id,
       agent,
       session,
       contextTokens,
       assessment: assessRelay({ agent, provider: adapter.id, contextTokens, health: digest.health, now }),
-      suggestion: `agentrelay handoff --session ${session.id.slice(0, 8)} --to ${other} --verify auto --confirm`,
+      ready,
+      suggestion: ready
+        ? `agentrelay launch ${ready.id} --to ${other}`
+        : `agentrelay handoff --session ${session.id.slice(0, 8)} --to ${other} --verify auto --confirm`,
     });
   }
   return out;

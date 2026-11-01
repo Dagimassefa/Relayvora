@@ -8,3 +8,4 @@ Thumbs.db
 
 # Local AgentRelay state for this repo (the tool also writes its own .gitignore inside)
 .agentrelay/
+release/

@@ -27,6 +27,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm test
+      - run: pnpm release:pack
+      - run: pnpm release:smoke
+      - run: pnpm bench:plan
       - name: CLI smoke test
         shell: bash
         env:

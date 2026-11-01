@@ -236,7 +236,7 @@ export function renderCheckpointList(r: { projectRoot: string; checkpoints: Chec
   if (r.checkpoints.length === 0) return `\n  ${statusIcon(t, 'info')} No checkpoints for ${r.projectRoot} yet.\n`;
   const rows = r.checkpoints.map((c) => [
     t.bold(c.id),
-    t.fg('blue', relativeTime(c.createdAt)),
+    `${t.fg('blue', relativeTime(c.createdAt))}${c.trigger && c.trigger !== 'manual' ? ` ${t.fg('violet', `auto:${c.trigger}`)}` : ''}`,
     `${providerChip(t, c.sourceProvider)} ${t.fg('gray', t.sym.arrow)} ${c.targetProvider ? providerChip(t, c.targetProvider) : t.dim('any')}`,
     c.estimatedTokens === null ? '?' : t.fg('cyan', `~${compact(c.estimatedTokens)}`),
     c.goal ?? '',
