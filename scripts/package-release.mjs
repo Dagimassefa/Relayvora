@@ -22,7 +22,9 @@ await build({
 });
 fs.chmodSync(path.join(stage, 'dist/bin.js'), 0o755);
 const manifest = {
-  name: cli.name, version: cli.version, description: cli.description, type: 'module',
+  name: 'relayvora', version: cli.version, description: cli.description, type: 'module',
+  repository: { type: 'git', url: 'git+https://github.com/Dagimassefa/Relayvora.git' },
+  homepage: 'https://github.com/Dagimassefa/Relayvora#readme',
   bin: cli.bin, engines: cli.engines, license: 'MIT',
   files: ['dist', 'README.md', 'CHANGELOG.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md'],
   publishConfig: { access: 'public' },

@@ -21,7 +21,7 @@ async function run(file, args, cwd = project) {
   return r.stdout;
 }
 await run('npm', ['install', '--prefix', install, '--cache', path.join(tmp, 'npm-cache'), '--ignore-scripts', '--no-audit', '--no-fund', '--offline', artifact], tmp);
-const bin = path.join(install, 'node_modules', '@relayvora', 'cli', 'dist', 'bin.js');
+const bin = path.join(install, 'node_modules', 'relayvora', 'dist', 'bin.js');
 const cli = (...args) => run(process.execPath, [bin, ...args]);
 if ((await cli('--version')).trim() !== manifest.version) throw new Error('Installed version mismatch');
 await run('git', ['init', '-q']);

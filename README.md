@@ -40,16 +40,15 @@ One command. New agent, full briefing, back in the fight.
 
 Requirements: Node.js **22.13+** and Git 2.31+.
 
-Download `relayvora-cli-<version>.tgz` from the
-[latest release](https://github.com/Dagimassefa/Relayvora/releases), then:
-
 ```sh
-npm install -g ./relayvora-cli-0.1.0-alpha.0.tgz
+npm install -g relayvora
 relayvora doctor              # checks Node, Git, the store, and finds Claude Code / Codex
 ```
 
-Remove it with `npm uninstall -g @relayvora/cli`. Each release also has a SHA-256 file and a signed build
-attestation; see [verifying a download](docs/releasing.md#signed-draft-releases).
+Or try it without installing: `npx relayvora`. Remove it with `npm uninstall -g relayvora`.
+Tarballs with a SHA-256 file and a signed build attestation are also on the
+[releases page](https://github.com/Dagimassefa/Relayvora/releases); see
+[verifying a download](docs/releasing.md#signed-draft-releases).
 
 ## Quick start
 
