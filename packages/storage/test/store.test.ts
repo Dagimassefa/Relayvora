@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parseCheckpoint } from '@agentrelay/core';
+import { parseCheckpoint } from '@relayvora/core';
 import { LATEST_SCHEMA_VERSION, MIGRATIONS, Store } from '../src/index.js';
 
 const open: Store[] = [];
@@ -42,10 +42,10 @@ describe('Store', () => {
     expect(store.migrate()).toEqual([]);
   });
 
-  it('refuses a database from a newer AgentRelay', () => {
+  it('refuses a database from a newer Relayvora', () => {
     const store = track(Store.open(':memory:'));
     store.db.exec(`PRAGMA user_version = ${LATEST_SCHEMA_VERSION + 1}`);
-    expect(() => store.migrate()).toThrow(/newer than this AgentRelay supports/);
+    expect(() => store.migrate()).toThrow(/newer than this Relayvora supports/);
   });
 
   it('rolls back a failed migration as a unit', () => {

@@ -5,7 +5,7 @@ import {
   type Evidence,
   type Fact,
 } from './checkpoint.js';
-import { AgentRelayError, ExitCode } from './errors.js';
+import { RelayvoraError, ExitCode } from './errors.js';
 import { sha256 } from './hash.js';
 import { redact, isSensitivePath, type RedactionFinding } from './redact.js';
 import type { GitSnapshot, SessionCommits, TranscriptDigest, VerificationResult } from './snapshot.js';
@@ -242,7 +242,7 @@ export function buildCheckpoint(input: BuildCheckpointInput): Checkpoint {
     };
     warnings.push(`Goal was inferred from the session's ${inferredFrom}; pass --goal to state it explicitly.`);
   } else {
-    throw new AgentRelayError(
+    throw new RelayvoraError(
       'No goal available: pass --goal "<what you are trying to do>", or choose a session with --from/--session.',
       ExitCode.Usage,
     );

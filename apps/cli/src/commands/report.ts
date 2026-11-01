@@ -1,11 +1,11 @@
 import {
-  AgentRelayError,
+  RelayvoraError,
   ExitCode,
   type AgentAdapter,
   type Checkpoint,
   type SessionSummary,
   type TranscriptDigest,
-} from '@agentrelay/core';
+} from '@relayvora/core';
 import { loadCheckpoint, runVerification } from '../checkpoint-service.js';
 import { type CliContext, openStore, selectAdapters } from '../context.js';
 import { locateProject } from '../project.js';
@@ -101,7 +101,7 @@ async function latestCheckpointId(ctx: CliContext): Promise<string> {
   try {
     const project = store.getProjectByRoot(root);
     const latest = project ? store.listCheckpoints(project.id, 1)[0] : undefined;
-    if (!latest) throw new AgentRelayError(`No checkpoints for ${root} yet.`, ExitCode.NotFound);
+    if (!latest) throw new RelayvoraError(`No checkpoints for ${root} yet.`, ExitCode.NotFound);
     return latest.id;
   } finally {
     store.close();
@@ -143,7 +143,7 @@ export async function runReport(ctx: CliContext, id: string | undefined, options
     };
   } else {
     notes.push(
-      `No session mentioning ${cp.id} was found after the checkpoint. Launch it with \`agentrelay launch ${cp.id}\`, or paste the handoff into the agent.`,
+      `No session mentioning ${cp.id} was found after the checkpoint. Launch it with \`relayvora launch ${cp.id}\`, or paste the handoff into the agent.`,
     );
   }
 
@@ -309,7 +309,7 @@ export function renderReport(r: RelayReport, t: Theme = PLAIN): string {
     `  ${t.dim("source session's last turn with the receiving session's first, which includes the agent's own system prompt.")}`,
   );
   if (!r.checks.now && r.checks.atCheckpoint.length > 0) {
-    out.push(`  ${t.fg('cyan', t.sym.arrow)} ${t.dim('re-run the checks:')} ${t.bold(`agentrelay report ${r.checkpointId} --reverify`)}`);
+    out.push(`  ${t.fg('cyan', t.sym.arrow)} ${t.dim('re-run the checks:')} ${t.bold(`relayvora report ${r.checkpointId} --reverify`)}`);
   }
   out.push('');
   return out.join('\n');

@@ -41,7 +41,7 @@ export async function runInit(ctx: CliContext): Promise<InitResult> {
 
 export function renderInit(r: InitResult, t: Theme = PLAIN): string {
   const head = r.createdConfig
-    ? `${statusIcon(t, 'ok')} ${t.bold('AgentRelay is live in')} ${t.fg('cyan', r.root)}`
+    ? `${statusIcon(t, 'ok')} ${t.bold('Relayvora is live in')} ${t.fg('cyan', r.root)}`
     : `${statusIcon(t, 'info')} ${t.bold('Already initialized in')} ${t.fg('cyan', r.root)}`;
   return [
     '',
@@ -50,7 +50,7 @@ export function renderInit(r: InitResult, t: Theme = PLAIN): string {
     `    ${label(t, 'store')} ${t.dim(r.dataDir)}`,
     ...r.warnings.map((w) => `  ${statusIcon(t, 'warn')} ${t.fg('amber', w)}`),
     '',
-    `  ${t.fg('cyan', t.sym.arrow)} ${t.dim('next:')} ${t.bold('agentrelay handoff --from codex --to claude --verify auto')}`,
+    `  ${t.fg('cyan', t.sym.arrow)} ${t.dim('next:')} ${t.bold('relayvora handoff --from codex --to claude --verify auto')}`,
     '',
   ].join('\n');
 }

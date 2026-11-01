@@ -8,7 +8,7 @@ import {
   type SessionHealth,
   type TranscriptDigest,
   type TranscriptUsage,
-} from '@agentrelay/core';
+} from '@relayvora/core';
 
 // Blocks Claude Code injects into user turns (slash-command echoes, hook output, IDE context).
 const INJECTED_BLOCK =

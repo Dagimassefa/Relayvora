@@ -1,4 +1,4 @@
-import type { SessionSummary } from '@agentrelay/core';
+import type { SessionSummary } from '@relayvora/core';
 import { type CliContext, selectAdapters } from '../context.js';
 import { formatBytes } from '../output.js';
 import { locateProject } from '../project.js';
@@ -49,7 +49,7 @@ export function renderSessions(result: SessionsResult, verbose = false, t: Theme
     for (const p of result.providers) {
       if (p.scannedRoots.length === 0) out.push(`    ${t.dim(`${p.provider}: no session directory found`)}`);
     }
-    if (result.projectRoot) out.push(`  ${t.fg('cyan', t.sym.arrow)} Try ${t.bold('agentrelay sessions --all')}`);
+    if (result.projectRoot) out.push(`  ${t.fg('cyan', t.sym.arrow)} Try ${t.bold('relayvora sessions --all')}`);
   } else {
     out.push(`  ${t.dim(scope)}`, '');
     const rows = sessions.map((s) => [
@@ -63,7 +63,7 @@ export function renderSessions(result: SessionsResult, verbose = false, t: Theme
     const first = sessions[0]!;
     out.push(
       '',
-      `  ${t.fg('cyan', t.sym.arrow)} ${t.dim('relay it:')} ${t.bold(`agentrelay handoff --session ${shortId(first.id)} --to ${first.provider === 'claude' ? 'codex' : 'claude'}`)}`,
+      `  ${t.fg('cyan', t.sym.arrow)} ${t.dim('relay it:')} ${t.bold(`relayvora handoff --session ${shortId(first.id)} --to ${first.provider === 'claude' ? 'codex' : 'claude'}`)}`,
     );
   }
 

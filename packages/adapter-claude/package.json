@@ -1,8 +1,8 @@
 {
-  "name": "@agentrelay/adapter-claude",
+  "name": "@relayvora/adapter-claude",
   "version": "0.1.0-alpha.0",
   "private": true,
-  "description": "AgentRelay adapter for Claude Code",
+  "description": "Relayvora adapter for Claude Code",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,6 +17,6 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@agentrelay/core": "workspace:*"
+    "@relayvora/core": "workspace:*"
   }
 }

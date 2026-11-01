@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { DB_FILENAME } from '@agentrelay/storage';
+import { DB_FILENAME } from '@relayvora/storage';
 import type { CliContext } from '../context.js';
 import { type ProjectConfig, locateProject, projectConfigPath, readProjectConfig } from '../project.js';
 import { label, providerName, rule } from '../ui/components.js';
@@ -32,7 +32,7 @@ export function renderConfig(r: ConfigResult, t: Theme = PLAIN): string {
     `  ${label(t, 'data', 9)}${t.dim(r.dataDir)}`,
     `  ${label(t, 'database', 9)}${t.dim(r.databasePath)}`,
     `  ${label(t, 'project', 9)}${t.fg('cyan', r.projectRoot)}`,
-    `  ${label(t, 'config', 9)}${r.projectConfig ? t.dim(r.projectConfigPath) : t.fg('amber', 'not initialized; run agentrelay init')}`,
+    `  ${label(t, 'config', 9)}${r.projectConfig ? t.dim(r.projectConfigPath) : t.fg('amber', 'not initialized; run relayvora init')}`,
   ];
   if (r.projectConfig) {
     const c = r.projectConfig;

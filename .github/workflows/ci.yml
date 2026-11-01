@@ -33,7 +33,7 @@ jobs:
       - name: CLI smoke test
         shell: bash
         env:
-          AGENTRELAY_HOME: ${{ runner.temp }}/agentrelay-home
+          RELAYVORA_HOME: ${{ runner.temp }}/relayvora-home
         run: |
           node apps/cli/dist/bin.js --version
           node apps/cli/dist/bin.js doctor --json

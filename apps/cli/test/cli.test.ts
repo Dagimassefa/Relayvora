@@ -7,7 +7,7 @@ import { runInit } from '../src/commands/init.js';
 import { runSessions } from '../src/commands/sessions.js';
 import { createContext } from '../src/context.js';
 import { main } from '../src/program.js';
-import { runCommand } from '@agentrelay/core';
+import { runCommand } from '@relayvora/core';
 
 let home: string;
 let project: string;
@@ -20,7 +20,7 @@ beforeEach(async () => {
   await runCommand('git', ['init', '-q', project]);
   env = {
     ...process.env,
-    AGENTRELAY_HOME: path.join(home, 'state'),
+    RELAYVORA_HOME: path.join(home, 'state'),
     CLAUDE_CONFIG_DIR: path.join(home, 'claude'),
     CODEX_HOME: path.join(home, 'codex'),
   };
@@ -34,11 +34,11 @@ afterEach(() => {
 const ctx = (cwd = project) => createContext({ cwd, env });
 
 describe('init', () => {
-  it('creates an ignored .agentrelay dir and is idempotent', async () => {
+  it('creates an ignored .relayvora dir and is idempotent', async () => {
     const first = await runInit(ctx());
     expect(first).toMatchObject({ isGitRepo: true, createdConfig: true, warnings: [] });
     expect(path.resolve(first.root)).toBe(path.resolve(project));
-    expect(fs.readFileSync(path.join(project, '.agentrelay', '.gitignore'), 'utf8')).toBe('*\n');
+    expect(fs.readFileSync(path.join(project, '.relayvora', '.gitignore'), 'utf8')).toBe('*\n');
 
     // Running from a subdirectory resolves to the same project.
     fs.mkdirSync(path.join(project, 'src'));
@@ -87,7 +87,7 @@ describe('main', () => {
     let stdout = '';
     vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => ((stdout += String(chunk)), true));
     vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
-    const code = await main(['node', 'agentrelay', '--cwd', project, ...args]);
+    const code = await main(['node', 'relayvora', '--cwd', project, ...args]);
     vi.restoreAllMocks();
     return { code, stdout };
   };
@@ -116,15 +116,15 @@ describe('home screen', () => {
     expect(home.stats.global.checkpoints).toBe(0);
     const text = renderHome(home);
     expect(text).toContain('QUICK MOVES');
-    expect(text).toContain('agentrelay init');
+    expect(text).toContain('relayvora init');
     expect(fs.readdirSync(project)).toEqual(before);
   });
 
-  it('bare `agentrelay` exits 0 and unknown commands are usage errors', async () => {
+  it('bare `relayvora` exits 0 and unknown commands are usage errors', async () => {
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
     vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
-    process.env.AGENTRELAY_HOME = env.AGENTRELAY_HOME;
-    expect(await main(['node', 'agentrelay', '--cwd', project])).toBe(0);
-    expect(await main(['node', 'agentrelay', '--cwd', project, 'bogus'])).toBe(2);
+    process.env.RELAYVORA_HOME = env.RELAYVORA_HOME;
+    expect(await main(['node', 'relayvora', '--cwd', project])).toBe(0);
+    expect(await main(['node', 'relayvora', '--cwd', project, 'bogus'])).toBe(2);
   });
 });

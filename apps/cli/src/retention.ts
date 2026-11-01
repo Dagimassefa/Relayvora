@@ -1,16 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { AgentRelayError, ExitCode } from '@agentrelay/core';
-import type { Store } from '@agentrelay/storage';
+import { RelayvoraError, ExitCode } from '@relayvora/core';
+import type { Store } from '@relayvora/storage';
 import { handoffPath, projectDir } from './project.js';
 
 /** Remove only our exact handoff path. Never follow redirected state directories. */
 export function removeCheckpoint(store: Store, root: string, id: string): boolean {
-  if (!/^[\w.-]+$/.test(id)) throw new AgentRelayError('Invalid checkpoint id', ExitCode.Usage);
+  if (!/^[\w.-]+$/.test(id)) throw new RelayvoraError('Invalid checkpoint id', ExitCode.Usage);
   for (const dir of [projectDir(root), path.join(projectDir(root), 'handoffs')]) {
     try {
       if (fs.lstatSync(dir).isSymbolicLink()) {
-        throw new AgentRelayError(`Refusing to delete through redirected directory: ${dir}`, ExitCode.PreconditionFailed);
+        throw new RelayvoraError(`Refusing to delete through redirected directory: ${dir}`, ExitCode.PreconditionFailed);
       }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;

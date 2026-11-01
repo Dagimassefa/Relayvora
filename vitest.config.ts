@@ -7,11 +7,11 @@ const src = (pkg: string) => fileURLToPath(new URL(`./${pkg}/src/index.ts`, impo
 export default defineConfig({
   resolve: {
     alias: {
-      '@agentrelay/core': src('packages/core'),
-      '@agentrelay/storage': src('packages/storage'),
-      '@agentrelay/git': src('packages/git'),
-      '@agentrelay/adapter-claude': src('packages/adapter-claude'),
-      '@agentrelay/adapter-codex': src('packages/adapter-codex'),
+      '@relayvora/core': src('packages/core'),
+      '@relayvora/storage': src('packages/storage'),
+      '@relayvora/git': src('packages/git'),
+      '@relayvora/adapter-claude': src('packages/adapter-claude'),
+      '@relayvora/adapter-codex': src('packages/adapter-codex'),
     },
   },
   test: {

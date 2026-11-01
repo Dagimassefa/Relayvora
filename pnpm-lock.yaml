@@ -23,19 +23,19 @@ importers:
 
   apps/cli:
     dependencies:
-      '@agentrelay/adapter-claude':
+      '@relayvora/adapter-claude':
         specifier: workspace:*
         version: link:../../packages/adapter-claude
-      '@agentrelay/adapter-codex':
+      '@relayvora/adapter-codex':
         specifier: workspace:*
         version: link:../../packages/adapter-codex
-      '@agentrelay/core':
+      '@relayvora/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@agentrelay/git':
+      '@relayvora/git':
         specifier: workspace:*
         version: link:../../packages/git
-      '@agentrelay/storage':
+      '@relayvora/storage':
         specifier: workspace:*
         version: link:../../packages/storage
       commander:
@@ -47,13 +47,13 @@ importers:
 
   packages/adapter-claude:
     dependencies:
-      '@agentrelay/core':
+      '@relayvora/core':
         specifier: workspace:*
         version: link:../core
 
   packages/adapter-codex:
     dependencies:
-      '@agentrelay/core':
+      '@relayvora/core':
         specifier: workspace:*
         version: link:../core
 
@@ -67,13 +67,13 @@ importers:
 
   packages/git:
     dependencies:
-      '@agentrelay/core':
+      '@relayvora/core':
         specifier: workspace:*
         version: link:../core
 
   packages/storage:
     dependencies:
-      '@agentrelay/core':
+      '@relayvora/core':
         specifier: workspace:*
         version: link:../core
 

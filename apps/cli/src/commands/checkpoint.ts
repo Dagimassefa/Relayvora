@@ -1,6 +1,6 @@
 import path from 'node:path';
-import { AgentRelayError, ExitCode, assessRelay, renderHandoff, type Checkpoint, type RelayAssessment } from '@agentrelay/core';
-import type { CheckpointRow } from '@agentrelay/storage';
+import { RelayvoraError, ExitCode, assessRelay, renderHandoff, type Checkpoint, type RelayAssessment } from '@relayvora/core';
+import type { CheckpointRow } from '@relayvora/storage';
 import { type CreateCheckpointResult, loadCheckpoint } from '../checkpoint-service.js';
 import { type CliContext, openStore } from '../context.js';
 import { locateProject } from '../project.js';
@@ -186,7 +186,7 @@ export function renderSummary(s: CheckpointSummary, t: Theme = PLAIN, launching 
 
   const panel = s.targetProvider ? `the ${providerName(t, PANEL_NAMES[s.targetProvider] ?? s.targetProvider)} panel` : 'the next agent';
   const arrow = t.fg('cyan', t.sym.arrow);
-  out.push('', `  ${arrow} ${t.dim('review')}  ${t.bold(displayPath(s.handoff.file))}  ${t.dim(`or agentrelay checkpoint show ${s.id}`)}`);
+  out.push('', `  ${arrow} ${t.dim('review')}  ${t.bold(displayPath(s.handoff.file))}  ${t.dim(`or relayvora checkpoint show ${s.id}`)}`);
   if (s.copied) {
     out.push(`  ${statusIcon(t, 'ok')} ${t.bold(t.fg('lime', 'copied'))}  paste into ${panel} ${t.dim('(Ctrl+V / Cmd+V)')}`);
   }
@@ -196,7 +196,7 @@ export function renderSummary(s: CheckpointSummary, t: Theme = PLAIN, launching 
   }
   if (!s.copied) {
     out.push(
-      `  ${arrow} ${t.dim('relay ')}  ${t.bold(`agentrelay launch ${s.id}`)} ${t.dim('in a terminal,')} or paste into ${panel} ${t.dim('(--copy)')}`,
+      `  ${arrow} ${t.dim('relay ')}  ${t.bold(`relayvora launch ${s.id}`)} ${t.dim('in a terminal,')} or paste into ${panel} ${t.dim('(--copy)')}`,
     );
   }
   out.push(`  ${arrow} ${t.dim('or say')}  ${t.fg('orange', s.pointer)}`, '');
@@ -224,7 +224,7 @@ export async function runCheckpointList(ctx: CliContext, limit: number): Promise
   try {
     const project = store.getProjectByRoot(root);
     if (!project) {
-      throw new AgentRelayError(`${root} has no checkpoints yet; run \`agentrelay checkpoint create\``, ExitCode.NotFound);
+      throw new RelayvoraError(`${root} has no checkpoints yet; run \`relayvora checkpoint create\``, ExitCode.NotFound);
     }
     return { projectRoot: root, checkpoints: store.listCheckpoints(project.id, limit) };
   } finally {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { stripAnsi } from '@agentrelay/core';
-import { streak } from '@agentrelay/storage';
+import { stripAnsi } from '@relayvora/core';
+import { streak } from '@relayvora/storage';
 import { banner, box, meter, relativeTime, table, truncateVisible, visibleLength } from '../src/ui/components.js';
 import { highlightMarkdown } from '../src/ui/markdown.js';
 import { detectColorLevel, makeTheme } from '../src/ui/theme.js';
@@ -56,7 +56,7 @@ describe('components', () => {
 
   it('falls back to ASCII glyphs', () => {
     const ascii = makeTheme(0, false, 80);
-    expect(stripAnsi(banner(ascii, '1.0'))).toContain('A G E N T R E L A Y');
+    expect(stripAnsi(banner(ascii, '1.0'))).toContain('R E L A Y V O R A');
     expect(box(ascii, 't', ['x'], 'cyan', 10)).toMatch(/^\+-/);
   });
 

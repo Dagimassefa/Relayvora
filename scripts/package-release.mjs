@@ -3,14 +3,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { build } from 'esbuild';
-import { AGENTRELAY_VERSION, runCommand } from '../packages/core/dist/index.js';
+import { RELAYVORA_VERSION, runCommand } from '../packages/core/dist/index.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const out = path.join(root, 'release');
 fs.mkdirSync(out, { recursive: true });
 const stage = fs.mkdtempSync(path.join(out, 'package-'));
 const cli = JSON.parse(fs.readFileSync(path.join(root, 'apps/cli/package.json'), 'utf8'));
-if (cli.version !== AGENTRELAY_VERSION) throw new Error('CLI manifest and core version disagree');
+if (cli.version !== RELAYVORA_VERSION) throw new Error('CLI manifest and core version disagree');
 if (process.env.GITHUB_REF_TYPE === 'tag' && process.env.GITHUB_REF_NAME !== `v${cli.version}`) throw new Error('Release tag must match the CLI version');
 
 await build({

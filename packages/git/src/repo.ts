@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { AgentRelayError, ExitCode, canonicalPath, runCommand, type ExecResult } from '@agentrelay/core';
+import { RelayvoraError, ExitCode, canonicalPath, runCommand, type ExecResult } from '@relayvora/core';
 
 export interface StatusEntry {
   /** Repo-relative path, forward slashes, as Git reports it. */
@@ -33,7 +33,7 @@ export async function git(cwd: string, args: string[], options: { maxOutputBytes
 export async function gitOk(cwd: string, args: string[], options: { maxOutputBytes?: number } = {}): Promise<string> {
   const result = await git(cwd, args, options);
   if (result.exitCode !== 0) {
-    throw new AgentRelayError(`git ${args.join(' ')} failed: ${result.stderr.trim()}`, ExitCode.Failure);
+    throw new RelayvoraError(`git ${args.join(' ')} failed: ${result.stderr.trim()}`, ExitCode.Failure);
   }
   return result.stdout;
 }
@@ -80,7 +80,7 @@ export function parsePorcelainZ(output: string): StatusEntry[] {
 
 export async function getRepoState(cwd: string): Promise<RepoState> {
   const root = await findRepoRoot(cwd);
-  if (!root) throw new AgentRelayError(`Not a Git repository: ${cwd}`, ExitCode.PreconditionFailed);
+  if (!root) throw new RelayvoraError(`Not a Git repository: ${cwd}`, ExitCode.PreconditionFailed);
 
   const [headResult, branchResult, gitDir, commonDir, status] = await Promise.all([
     git(root, ['rev-parse', '--verify', '--quiet', 'HEAD']),

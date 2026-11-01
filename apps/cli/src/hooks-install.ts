@@ -2,13 +2,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { AgentRelayError, ExitCode, runCommand } from '@agentrelay/core';
+import { RelayvoraError, ExitCode, runCommand } from '@relayvora/core';
 import { type HookOptions } from './hooks.js';
 
 export type HookScope = 'local' | 'user';
 
 /**
- * Claude Code events AgentRelay hooks into. Exec form (command + args) runs without a shell, so paths
+ * Claude Code events Relayvora hooks into. Exec form (command + args) runs without a shell, so paths
  * with spaces need no quoting and it works the same on Windows (node.exe is a real executable).
  */
 const CLAUDE_EVENTS: Array<{ event: string; matcher?: string; why: string }> = [
@@ -67,11 +67,11 @@ function readJson(file: string): ClaudeSettings {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8')) as ClaudeSettings;
   } catch (error) {
-    throw new AgentRelayError(`${file} is not valid JSON; fix it before installing hooks (${(error as Error).message})`, ExitCode.PreconditionFailed);
+    throw new RelayvoraError(`${file} is not valid JSON; fix it before installing hooks (${(error as Error).message})`, ExitCode.PreconditionFailed);
   }
 }
 
-/** Removes AgentRelay's entries, leaving every other hook exactly as it was. */
+/** Removes Relayvora's entries, leaving every other hook exactly as it was. */
 function withoutOurClaudeHooks(settings: ClaudeSettings): ClaudeSettings {
   const hooks = { ...(settings.hooks ?? {}) };
   for (const [event, groups] of Object.entries(hooks)) {
@@ -132,7 +132,7 @@ export async function ensureGitIgnored(projectRoot: string, file: string): Promi
   if (!dir || dir.exitCode !== 0) return null;
   const exclude = path.resolve(projectRoot, dir.stdout.trim());
   fs.mkdirSync(path.dirname(exclude), { recursive: true });
-  fs.appendFileSync(exclude, `\n# Added by agentrelay hooks install\n/${rel}\n`);
+  fs.appendFileSync(exclude, `\n# Added by relayvora hooks install\n/${rel}\n`);
   return exclude;
 }
 
@@ -159,11 +159,11 @@ export function installCodexNotify(file: string, options: HookOptions, apply: bo
       agent: 'codex',
       file,
       changes: [],
-      warnings: ['Codex already has a notify program; left it alone. Codex allows only one, so add AgentRelay to it by hand if you want both.'],
+      warnings: ['Codex already has a notify program; left it alone. Codex allows only one, so add Relayvora to it by hand if you want both.'],
     };
   }
   const { command, args } = hookCommand('codex', options);
-  const line = `notify = [${[command, ...args].map(tomlString).join(', ')}]  # agentrelay hooks`;
+  const line = `notify = [${[command, ...args].map(tomlString).join(', ')}]  # relayvora hooks`;
   if (apply) {
     const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
     const lines = text.split(/\r?\n/).filter((l) => !NOTIFY_LINE.test(l));

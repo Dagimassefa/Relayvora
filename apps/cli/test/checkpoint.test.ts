@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { runCommand } from '@agentrelay/core';
+import { runCommand } from '@relayvora/core';
 import { createCheckpoint } from '../src/checkpoint-service.js';
 import { runCheckpointList, runCheckpointShow } from '../src/commands/checkpoint.js';
 import { runExport } from '../src/commands/export.js';
@@ -43,7 +43,7 @@ beforeEach(async () => {
 
   env = {
     ...process.env,
-    AGENTRELAY_HOME: path.join(home, 'state'),
+    RELAYVORA_HOME: path.join(home, 'state'),
     CLAUDE_CONFIG_DIR: path.join(home, 'claude'),
     CODEX_HOME: path.join(home, 'codex'),
   };
@@ -73,7 +73,7 @@ describe('checkpoint create', () => {
 
     // Handoff file is written for review, inside a Git-ignored directory.
     expect(fs.readFileSync(r.handoffFile, 'utf8')).toBe(cp.handoff.prompt);
-    expect(r.handoffFile).toContain(path.join('.agentrelay', 'handoffs'));
+    expect(r.handoffFile).toContain(path.join('.relayvora', 'handoffs'));
     const status = await runCommand('git', ['status', '--porcelain'], { cwd: project });
     expect(status.stdout.trim()).toBe('M src/date.js');
   });
@@ -126,10 +126,10 @@ describe('CLI', () => {
     let stdout = '';
     vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => ((stdout += String(chunk)), true));
     vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
-    process.env.AGENTRELAY_HOME = env.AGENTRELAY_HOME;
+    process.env.RELAYVORA_HOME = env.RELAYVORA_HOME;
     process.env.CODEX_HOME = env.CODEX_HOME;
     process.env.CLAUDE_CONFIG_DIR = env.CLAUDE_CONFIG_DIR;
-    const code = await main(['node', 'agentrelay', '--cwd', project, ...args]);
+    const code = await main(['node', 'relayvora', '--cwd', project, ...args]);
     vi.restoreAllMocks();
     return { code, stdout };
   };
@@ -209,7 +209,7 @@ describe('relay report', () => {
     fs.writeFileSync(
       path.join(dir, 'recv-1.jsonl'),
       [
-        JSON.stringify({ type: 'user', cwd: project, sessionId: 'recv-1', timestamp: later(5), message: { role: 'user', content: `Continue the task described in .agentrelay/handoffs/${checkpoint.id}.md` } }),
+        JSON.stringify({ type: 'user', cwd: project, sessionId: 'recv-1', timestamp: later(5), message: { role: 'user', content: `Continue the task described in .relayvora/handoffs/${checkpoint.id}.md` } }),
         call('m1', 10, 30_000),
         call('m2', 70, 36_000),
       ].join('\n'),
@@ -221,7 +221,7 @@ describe('relay report', () => {
     expect(report.checks.atCheckpoint).toEqual([expect.objectContaining({ status: 'failed', exitCode: 1 })]);
     expect(report.checks.now).toEqual([expect.objectContaining({ status: 'failed', exitCode: 1 })]);
 
-    const { Store } = await import('@agentrelay/storage');
+    const { Store } = await import('@relayvora/storage');
     const store = Store.openInDir(ctx().dataDir);
     expect(store.measuredRelays()).toEqual([expect.objectContaining({ sourceContextTokens: 120_000, receivingFirstContextTokens: 30_000 })]);
     store.close();

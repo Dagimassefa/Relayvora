@@ -38,11 +38,11 @@ Enforced by `packages/core/src/checkpoint.ts`:
 
 ```
 session file ──adapter.readTranscript──► TranscriptDigest ┐
-git working tree ──collectGitSnapshot──► GitSnapshot      ├─► buildCheckpoint ─► renderHandoff ─► store + .agentrelay/handoffs/<id>.md
+git working tree ──collectGitSnapshot──► GitSnapshot      ├─► buildCheckpoint ─► renderHandoff ─► store + .relayvora/handoffs/<id>.md
 --verify commands ──runVerification────► VerificationResult┘     (core, pure)     (core, pure)
 ```
 
-- **Collect** (I/O): adapters, `@agentrelay/git` and the CLI service gather inputs. Transcripts are streamed
+- **Collect** (I/O): adapters, `@relayvora/git` and the CLI service gather inputs. Transcripts are streamed
   with a raw-line prefilter, so a 30 MB rollout costs one pass and parses only the relevant records.
 - **Build** (`core/build.ts`): converts inputs into evidence and labelled facts, applies per-item caps, and
   redacts everything. Failing commands become `[observed]` blockers; passing ones become `[observed]` completions.

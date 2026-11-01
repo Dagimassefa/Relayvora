@@ -1,4 +1,4 @@
-import { AgentRelayError, ExitCode } from '@agentrelay/core';
+import { RelayvoraError, ExitCode } from '@relayvora/core';
 import type { CliContext } from '../context.js';
 import {
   type HookPlan,
@@ -37,7 +37,7 @@ export interface HooksInstallResult {
 }
 
 export async function runHooksInstall(ctx: CliContext, flags: HooksFlags): Promise<HooksInstallResult> {
-  if (flags.scope !== 'local' && flags.scope !== 'user') throw new AgentRelayError('--scope must be local or user', ExitCode.Usage);
+  if (flags.scope !== 'local' && flags.scope !== 'user') throw new RelayvoraError('--scope must be local or user', ExitCode.Usage);
   const options: HookOptions = { everyMinutes: flags.every, keep: flags.keep, verify: Boolean(flags.verify) };
   const apply = !flags.dryRun;
   const { root } = await locateProject(ctx.cwd);
@@ -71,7 +71,7 @@ export function renderHooksInstall(r: HooksInstallResult, t: Theme = PLAIN): str
     for (const w of p.warnings) out.push(`      ${statusIcon(t, 'warn')} ${t.fg('amber', w)}`);
   }
   if (r.excludedIn) out.push('', `  ${statusIcon(t, 'info')} ${t.dim(`kept the settings file out of Git via ${r.excludedIn}`)}`);
-  out.push('', ...r.notes.map((n) => `  ${t.dim(n)}`), '', `  ${t.dim('See them with')} ${t.bold('agentrelay hooks status')}${t.dim(', remove with')} ${t.bold('agentrelay hooks uninstall')}`, '');
+  out.push('', ...r.notes.map((n) => `  ${t.dim(n)}`), '', `  ${t.dim('See them with')} ${t.bold('relayvora hooks status')}${t.dim(', remove with')} ${t.bold('relayvora hooks uninstall')}`, '');
   return out.join('\n');
 }
 

@@ -51,7 +51,7 @@ jobs:
           subject-path: release/*.tgz
       - uses: actions/upload-artifact@v4
         with:
-          name: agentrelay-release
+          name: relayvora-release
           path: |
             release/*.tgz
             release/*.sha256
@@ -66,7 +66,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: agentrelay-release
+          name: relayvora-release
           path: release
       - name: Create draft release
         env:

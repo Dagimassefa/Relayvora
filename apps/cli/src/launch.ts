@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { AgentRelayError, ExitCode, runInteractive, sha256, type AgentAdapter, type Checkpoint } from '@agentrelay/core';
+import { RelayvoraError, ExitCode, runInteractive, sha256, type AgentAdapter, type Checkpoint } from '@relayvora/core';
 import { confirmOrAbort } from './confirm.js';
 import { type CliContext, openStore, selectAdapters } from './context.js';
-import { collectGitSnapshot } from '@agentrelay/git';
+import { collectGitSnapshot } from '@relayvora/git';
 import { handoffPath } from './project.js';
 
 /**
@@ -14,7 +14,7 @@ import { handoffPath } from './project.js';
 export function pointerPrompt(cp: Checkpoint, handoffFile: string): string {
   const rel = path.relative(cp.project.root, handoffFile).split(path.sep).join('/');
   const from = cp.source.provider === 'manual' ? 'a previous session' : `a ${cp.source.provider} session`;
-  return `Continue the task described in ${rel} (an AgentRelay handoff from ${from}). Read that file first, verify its agent-reported and inferred claims, then carry on.`;
+  return `Continue the task described in ${rel} (an Relayvora handoff from ${from}). Read that file first, verify its agent-reported and inferred claims, then carry on.`;
 }
 
 export interface Freshness {
@@ -52,7 +52,7 @@ export async function checkFreshness(cp: Checkpoint): Promise<Freshness> {
 function freshnessSentence(f: Freshness): string {
   if (!f.checked) return '';
   if (f.fresh) {
-    return 'AgentRelay re-checked the repository just before starting this session: HEAD, branch and uncommitted changes still match the handoff, so you do not need to re-check them.';
+    return 'Relayvora re-checked the repository just before starting this session: HEAD, branch and uncommitted changes still match the handoff, so you do not need to re-check them.';
   }
   const shown = f.differences.slice(0, 5).join('; ');
   return `The repository changed after the handoff was written (${shown}${f.differences.length > 5 ? '; ...' : ''}). Run git status once before relying on its file list.`;
@@ -71,7 +71,7 @@ export function launchPrompt(cp: Checkpoint, handoffFile: string, freshness: Fre
   const rel = path.relative(cp.project.root, handoffFile).split(path.sep).join('/');
   const text = fs.readFileSync(handoffFile, 'utf8');
   const from = cp.source.provider === 'manual' ? 'a previous session' : `a ${cp.source.provider} session`;
-  const intro = `You are continuing work from ${from}. The AgentRelay handoff below (also saved at ${rel}) describes the task, what is done and what is left.`;
+  const intro = `You are continuing work from ${from}. The Relayvora handoff below (also saved at ${rel}) describes the task, what is done and what is left.`;
   const inline = `${[intro, fresh].filter(Boolean).join(' ')}\n\n${text}`;
   if (inlineAllowed && inline.length <= INLINE_LIMIT) return { prompt: inline, mode: 'inline' };
   return { prompt: [pointerPrompt(cp, handoffFile), fresh].filter(Boolean).join(' '), mode: 'pointer' };
@@ -98,14 +98,14 @@ export interface LaunchPlan {
 export async function planLaunch(ctx: CliContext, cp: Checkpoint, target: string | null): Promise<LaunchPlan> {
   const provider = target ?? cp.handoff.targetProvider;
   if (!provider) {
-    throw new AgentRelayError('No target agent: pass --to claude or --to codex.', ExitCode.Usage);
+    throw new RelayvoraError('No target agent: pass --to claude or --to codex.', ExitCode.Usage);
   }
   const adapter: AgentAdapter = selectAdapters(ctx, provider)[0]!;
   if (!adapter.launchArgs) {
-    throw new AgentRelayError(`${adapter.displayName} cannot be launched by AgentRelay yet.`, ExitCode.Unsupported);
+    throw new RelayvoraError(`${adapter.displayName} cannot be launched by Relayvora yet.`, ExitCode.Unsupported);
   }
   if (!fs.existsSync(cp.project.root)) {
-    throw new AgentRelayError(`The checkpoint's project folder no longer exists: ${cp.project.root}`, ExitCode.PreconditionFailed);
+    throw new RelayvoraError(`The checkpoint's project folder no longer exists: ${cp.project.root}`, ExitCode.PreconditionFailed);
   }
 
   // Recreate the handoff file if it was deleted; an edited file is kept as the user left it.
@@ -117,7 +117,7 @@ export async function planLaunch(ctx: CliContext, cp: Checkpoint, target: string
 
   const probe = await adapter.probe({ env: ctx.env });
   if (!probe.found || !probe.path) {
-    throw new AgentRelayError(
+    throw new RelayvoraError(
       `${adapter.displayName} was not found on PATH or in an editor extension. Install its CLI, or use --copy and paste the handoff into the editor panel.`,
       ExitCode.NotFound,
     );

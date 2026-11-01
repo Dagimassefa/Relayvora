@@ -1,4 +1,4 @@
-import { AgentRelayError, ExitCode } from './errors.js';
+import { RelayvoraError, ExitCode } from './errors.js';
 
 // eslint-disable-next-line no-control-regex
 const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]|\u001b\][^\u0007]*\u0007/g;
@@ -97,7 +97,7 @@ export function parseCommandLine(line: string): string[] {
       current = '';
       inToken = false;
     } else if ('|&;<>`'.includes(c) || (c === '$' && line[i + 1] === '(')) {
-      throw new AgentRelayError(
+      throw new RelayvoraError(
         `Shell operator "${c}" is not supported in a verification command (no shell is used). Put the pipeline in a script and run that.`,
         ExitCode.Usage,
       );
@@ -106,8 +106,8 @@ export function parseCommandLine(line: string): string[] {
       inToken = true;
     }
   }
-  if (quote) throw new AgentRelayError(`Unterminated ${quote} quote in command: ${line}`, ExitCode.Usage);
+  if (quote) throw new RelayvoraError(`Unterminated ${quote} quote in command: ${line}`, ExitCode.Usage);
   if (inToken) args.push(current);
-  if (args.length === 0) throw new AgentRelayError('Empty verification command', ExitCode.Usage);
+  if (args.length === 0) throw new RelayvoraError('Empty verification command', ExitCode.Usage);
   return args;
 }

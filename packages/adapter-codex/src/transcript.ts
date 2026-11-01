@@ -9,7 +9,7 @@ import {
   type SessionHealth,
   type TranscriptDigest,
   type TranscriptUsage,
-} from '@agentrelay/core';
+} from '@relayvora/core';
 
 function contentText(content: unknown, itemType: string): string | null {
   if (!Array.isArray(content)) return null;

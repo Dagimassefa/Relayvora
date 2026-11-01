@@ -14,12 +14,12 @@ export const ExitCode = {
 
 export type ExitCode = (typeof ExitCode)[keyof typeof ExitCode];
 
-export class AgentRelayError extends Error {
+export class RelayvoraError extends Error {
   readonly exitCode: ExitCode;
 
   constructor(message: string, exitCode: ExitCode = ExitCode.Failure, options?: { cause?: unknown }) {
     super(message, options);
-    this.name = 'AgentRelayError';
+    this.name = 'RelayvoraError';
     this.exitCode = exitCode;
   }
 }

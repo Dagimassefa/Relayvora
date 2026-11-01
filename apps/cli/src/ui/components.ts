@@ -1,4 +1,4 @@
-import { stripAnsi } from '@agentrelay/core';
+import { stripAnsi } from '@relayvora/core';
 import type { ColorName, Theme } from './theme.js';
 
 /** Printable width, ignoring escape codes. */
@@ -43,9 +43,11 @@ const FONT: Record<string, [string, string]> = {
   R: ['█▀█', '█▀▄'],
   L: ['█  ', '█▄▄'],
   Y: ['█▄█', ' █ '],
+  V: ['█ █', '▀▄▀'],
+  O: ['█▀█', '█▄█'],
 };
 
-export function logo(t: Theme, word = 'AGENTRELAY'): string[] {
+export function logo(t: Theme, word = 'RELAYVORA'): string[] {
   if (!t.unicode) return [t.bold(t.fg('cyan', word.split('').join(' ')))];
   const rows = [0, 1].map((r) => word.split('').map((c) => FONT[c]?.[r] ?? c).join(' '));
   return rows.map((row) => t.bold(t.gradient(row, 'cyan', 'magenta')));

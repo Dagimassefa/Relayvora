@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { asRecord } from '@agentrelay/core';
+import { asRecord } from '@relayvora/core';
 import { createCheckpoint } from './checkpoint-service.js';
 import { type CliContext, createContext, openStore } from './context.js';
 import { cliEntryPoint } from './hooks-install.js';

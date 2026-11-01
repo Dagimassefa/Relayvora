@@ -1,11 +1,11 @@
 {
-  "name": "@agentrelay/cli",
+  "name": "@relayvora/cli",
   "version": "0.1.0-alpha.0",
   "private": true,
-  "description": "AgentRelay command-line interface",
+  "description": "Relayvora command-line interface",
   "type": "module",
   "bin": {
-    "agentrelay": "./dist/bin.js"
+    "relayvora": "./dist/bin.js"
   },
   "files": ["dist"],
   "engines": {
@@ -15,11 +15,11 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@agentrelay/adapter-claude": "workspace:*",
-    "@agentrelay/adapter-codex": "workspace:*",
-    "@agentrelay/core": "workspace:*",
-    "@agentrelay/git": "workspace:*",
-    "@agentrelay/storage": "workspace:*",
+    "@relayvora/adapter-claude": "workspace:*",
+    "@relayvora/adapter-codex": "workspace:*",
+    "@relayvora/core": "workspace:*",
+    "@relayvora/git": "workspace:*",
+    "@relayvora/storage": "workspace:*",
     "commander": "^14.0.3",
     "zod": "^4.6.5"
   }

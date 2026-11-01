@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { AgentRelayError, ExitCode, estimateTokens, redact, type RedactionFinding } from '@agentrelay/core';
+import { RelayvoraError, ExitCode, estimateTokens, redact, type RedactionFinding } from '@relayvora/core';
 import { loadCheckpoint } from '../checkpoint-service.js';
 import { confirmOrAbort } from '../confirm.js';
 import { type CliContext, openStore } from '../context.js';
@@ -46,7 +46,7 @@ export async function runExport(ctx: CliContext, id: string, options: ExportOpti
 
   const out = path.resolve(ctx.cwd, options.out);
   if (fs.existsSync(out) && !options.force) {
-    throw new AgentRelayError(`${out} already exists; pass --force to overwrite`, ExitCode.PreconditionFailed);
+    throw new RelayvoraError(`${out} already exists; pass --force to overwrite`, ExitCode.PreconditionFailed);
   }
   const extra = findings.length > 0 ? `, ${findings.reduce((a, f) => a + f.count, 0)} extra redaction(s)` : '';
   await confirmOrAbort(`Export ${cp.id} as ${format} (~${result.estimatedTokens} tokens${extra}) to ${out}?`, {

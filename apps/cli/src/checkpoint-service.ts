@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  AgentRelayError,
+  RelayvoraError,
   ExitCode,
   buildCheckpoint,
   detectVerifyCommands,
@@ -20,9 +20,9 @@ import {
   type TranscriptDigest,
   type UserTaskInput,
   type VerificationResult,
-} from '@agentrelay/core';
-import { collectCommitsSince, collectGitSnapshot, resolveSince } from '@agentrelay/git';
-import type { Store } from '@agentrelay/storage';
+} from '@relayvora/core';
+import { collectCommitsSince, collectGitSnapshot, resolveSince } from '@relayvora/git';
+import type { Store } from '@relayvora/storage';
 import { type CliContext, openStore, selectAdapters } from './context.js';
 import { ensureProject, handoffPath } from './project.js';
 import { enforceRetention } from './retention.js';
@@ -73,12 +73,12 @@ async function findSession(
   }
   if (matches.length === 1) return matches[0]!;
   if (matches.length > 1) {
-    throw new AgentRelayError(
+    throw new RelayvoraError(
       `Session "${idOrPrefix}" is ambiguous: ${matches.map((m) => `${m.adapter.id}:${m.session.id}`).join(', ')}`,
       ExitCode.Usage,
     );
   }
-  throw new AgentRelayError(`No session found with id "${idOrPrefix}"`, ExitCode.NotFound);
+  throw new RelayvoraError(`No session found with id "${idOrPrefix}"`, ExitCode.NotFound);
 }
 
 async function latestSession(
@@ -90,7 +90,7 @@ async function latestSession(
   const { sessions } = await adapter.discoverSessions({ env: ctx.env, projectRoot, limit: 1 });
   const session = sessions[0];
   if (!session) {
-    throw new AgentRelayError(
+    throw new RelayvoraError(
       `No ${adapter.displayName} session found for ${projectRoot}. Pass --session <id>, or omit --from for a repository-only checkpoint.`,
       ExitCode.NotFound,
     );
@@ -134,10 +134,10 @@ export async function createCheckpoint(ctx: CliContext, options: CreateCheckpoin
   const progress = options.progress ?? SILENT_PROGRESS;
   if (options.to) selectAdapters(ctx, options.to); // validate early
   if (options.budget !== undefined && options.budget < 200) {
-    throw new AgentRelayError('--budget must be at least 200 tokens', ExitCode.Usage);
+    throw new RelayvoraError('--budget must be at least 200 tokens', ExitCode.Usage);
   }
   if (!options.goal?.trim() && !options.from && !options.session) {
-    throw new AgentRelayError(
+    throw new RelayvoraError(
       'No goal available: pass --goal "<what you are trying to do>", or choose a session with --from/--session.',
       ExitCode.Usage,
     );
@@ -310,7 +310,7 @@ export async function loadCheckpoint(ctx: CliContext, idOrPrefix: string): Promi
   const store = openStore(ctx);
   try {
     const cp = store.getCheckpoint(idOrPrefix);
-    if (!cp) throw new AgentRelayError(`No checkpoint found with id "${idOrPrefix}"`, ExitCode.NotFound);
+    if (!cp) throw new RelayvoraError(`No checkpoint found with id "${idOrPrefix}"`, ExitCode.NotFound);
     return cp;
   } finally {
     store.close();

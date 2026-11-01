@@ -15,7 +15,7 @@ import {
   type ProbeOptions,
   type SessionDiscovery,
   type SessionSummary,
-} from '@agentrelay/core';
+} from '@relayvora/core';
 import { readCodexTranscript } from './transcript.js';
 
 /**

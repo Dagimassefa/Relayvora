@@ -1,10 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { findRepoRoot } from '@agentrelay/git';
-import type { ProjectRecord, Store } from '@agentrelay/storage';
+import { findRepoRoot } from '@relayvora/git';
+import type { ProjectRecord, Store } from '@relayvora/storage';
 import { z } from 'zod';
 
-export const PROJECT_DIR = '.agentrelay';
+export const PROJECT_DIR = '.relayvora';
 export const PROJECT_CONFIG_FILE = 'config.json';
 export const HANDOFFS_DIR = 'handoffs';
 
@@ -14,7 +14,7 @@ export const ProjectConfig = z.object({
   providers: z.array(z.string()).default(['claude', 'codex']),
   /** Default token budget for generated handoffs (estimated tokens). */
   handoffBudgetTokens: z.number().int().positive().default(4000),
-  /** AgentRelay checkpoint retention in days; null keeps everything. Vendor transcripts are never deleted. */
+  /** Relayvora checkpoint retention in days; null keeps everything. Vendor transcripts are never deleted. */
   retentionDays: z.number().int().positive().nullable().default(30),
 });
 export type ProjectConfig = z.infer<typeof ProjectConfig>;
@@ -58,7 +58,7 @@ export interface EnsuredProject extends ProjectLocation {
 }
 
 /**
- * Creates `.agentrelay/` (self-ignored by Git) and the default config if missing, and registers the
+ * Creates `.relayvora/` (self-ignored by Git) and the default config if missing, and registers the
  * project in the store. Idempotent; never overwrites an existing config.
  */
 export async function ensureProject(cwd: string, store: Store): Promise<EnsuredProject> {

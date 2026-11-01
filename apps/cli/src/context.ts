@@ -1,7 +1,7 @@
-import { claudeAdapter } from '@agentrelay/adapter-claude';
-import { codexAdapter } from '@agentrelay/adapter-codex';
-import { AgentRelayError, ExitCode, canonicalPath, dataDir, type AgentAdapter } from '@agentrelay/core';
-import { Store } from '@agentrelay/storage';
+import { claudeAdapter } from '@relayvora/adapter-claude';
+import { codexAdapter } from '@relayvora/adapter-codex';
+import { RelayvoraError, ExitCode, canonicalPath, dataDir, type AgentAdapter } from '@relayvora/core';
+import { Store } from '@relayvora/storage';
 
 export interface CliContext {
   cwd: string;
@@ -27,7 +27,7 @@ export function selectAdapters(ctx: CliContext, provider?: string): readonly Age
   const adapter = ctx.adapters.find((a) => a.id === provider);
   if (!adapter) {
     const known = ctx.adapters.map((a) => a.id).join(', ');
-    throw new AgentRelayError(`Unknown provider "${provider}". Supported: ${known}`, ExitCode.Usage);
+    throw new RelayvoraError(`Unknown provider "${provider}". Supported: ${known}`, ExitCode.Usage);
   }
   return [adapter];
 }

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { runCommand } from '@agentrelay/core';
+import { runCommand } from '@relayvora/core';
 import { createContext, type CliContext } from '../src/context.js';
 import {
   claudeHooksInstalled,
@@ -118,7 +118,7 @@ describe('handleHookEvent', () => {
         .map((l) => JSON.stringify(l))
         .join('\n'),
     );
-    ctx = createContext({ cwd: project, env: { ...process.env, AGENTRELAY_HOME: path.join(home, 'state'), CODEX_HOME: path.join(home, 'codex') } });
+    ctx = createContext({ cwd: project, env: { ...process.env, RELAYVORA_HOME: path.join(home, 'state'), CODEX_HOME: path.join(home, 'codex') } });
   });
 
   it('throttles turn checkpoints, always saves on compaction or limits, and prunes old ones', async () => {
@@ -131,13 +131,13 @@ describe('handleHookEvent', () => {
     const limit = await handleHookEvent(ctx, { ...event, trigger: 'limit' }, OPTIONS);
     expect(limit.pruned).toEqual([first.checkpointId]); // keep: 2
 
-    const { Store } = await import('@agentrelay/storage');
+    const { Store } = await import('@relayvora/storage');
     const store = Store.openInDir(ctx.dataDir);
     expect(store.autoCheckpoints(thread).map((c) => [c.id, c.trigger])).toEqual([
       [limit.checkpointId, 'limit'],
       [compact.checkpointId, 'pre-compact'],
     ]);
     store.close();
-    expect(fs.existsSync(path.join(project, '.agentrelay', 'handoffs', `${first.checkpointId}.md`))).toBe(false);
+    expect(fs.existsSync(path.join(project, '.relayvora', 'handoffs', `${first.checkpointId}.md`))).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { AgentRelayError, ExitCode } from './errors.js';
+import { RelayvoraError, ExitCode } from './errors.js';
 import { findExecutable } from './platform.js';
 
 export interface ExecOptions {
@@ -47,11 +47,11 @@ interface SpawnPlan {
 export function planSpawn(file: string, args: string[], platform: NodeJS.Platform = process.platform): SpawnPlan {
   if (platform === 'win32' && /\.(cmd|bat)$/i.test(file)) {
     if (UNSAFE_BATCH_PATH.test(file)) {
-      throw new AgentRelayError(`Refusing to run batch file with unsafe path: ${file}`, ExitCode.Unsupported);
+      throw new RelayvoraError(`Refusing to run batch file with unsafe path: ${file}`, ExitCode.Unsupported);
     }
     for (const arg of args) {
       if (UNSAFE_BATCH_ARG.test(arg)) {
-        throw new AgentRelayError(`Refusing to pass unsafe argument to batch file: ${arg}`, ExitCode.Unsupported);
+        throw new RelayvoraError(`Refusing to pass unsafe argument to batch file: ${arg}`, ExitCode.Unsupported);
       }
     }
     const line = [file, ...args].map((a) => `"${a}"`).join(' ');
@@ -85,7 +85,7 @@ export function runCommand(command: string, args: string[] = [], options: ExecOp
   const env = options.env ?? process.env;
   const resolved = findExecutable(command, env);
   if (!resolved) {
-    return Promise.reject(new AgentRelayError(`Executable not found on PATH: ${command}`, ExitCode.NotFound));
+    return Promise.reject(new RelayvoraError(`Executable not found on PATH: ${command}`, ExitCode.NotFound));
   }
   const plan = planSpawn(resolved, args);
   const maxBytes = options.maxOutputBytes ?? DEFAULT_MAX_OUTPUT;
@@ -134,7 +134,7 @@ export function runCommand(command: string, args: string[] = [], options: ExecOp
     child.on('error', (error) => {
       clearTimeout(timer);
       options.signal?.removeEventListener('abort', onAbort);
-      reject(new AgentRelayError(`Failed to start ${command}: ${error.message}`, ExitCode.Failure, { cause: error }));
+      reject(new RelayvoraError(`Failed to start ${command}: ${error.message}`, ExitCode.Failure, { cause: error }));
     });
 
     child.on('close', (exitCode, signal) => {
@@ -172,11 +172,11 @@ export function runInteractive(command: string, args: string[], options: { cwd?:
   const env = options.env ?? process.env;
   const resolved = findExecutable(command, env);
   if (!resolved) {
-    return Promise.reject(new AgentRelayError(`Executable not found: ${command}`, ExitCode.NotFound));
+    return Promise.reject(new RelayvoraError(`Executable not found: ${command}`, ExitCode.NotFound));
   }
   const plan = planSpawn(resolved, args);
   return new Promise((resolve, reject) => {
-    // Ctrl+C belongs to the agent while it runs; do not let it kill AgentRelay underneath it.
+    // Ctrl+C belongs to the agent while it runs; do not let it kill Relayvora underneath it.
     const ignore = () => {};
     process.on('SIGINT', ignore);
     const child = spawn(plan.file, plan.args, {
@@ -188,7 +188,7 @@ export function runInteractive(command: string, args: string[], options: { cwd?:
     });
     child.on('error', (error) => {
       process.off('SIGINT', ignore);
-      reject(new AgentRelayError(`Failed to start ${command}: ${error.message}`, ExitCode.Failure, { cause: error }));
+      reject(new RelayvoraError(`Failed to start ${command}: ${error.message}`, ExitCode.Failure, { cause: error }));
     });
     child.on('close', (exitCode, signal) => {
       process.off('SIGINT', ignore);

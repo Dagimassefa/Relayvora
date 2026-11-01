@@ -14,7 +14,7 @@ import {
   type ProbeOptions,
   type SessionDiscovery,
   type SessionSummary,
-} from '@agentrelay/core';
+} from '@relayvora/core';
 import { readClaudeTranscript } from './transcript.js';
 
 /**

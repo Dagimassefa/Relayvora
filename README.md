@@ -1,6 +1,6 @@
 <div align="center">
 
-# AgentRelay
+# Relayvora
 
 **Your agent went down mid-mission. Send in the next one.**
 
@@ -18,7 +18,7 @@ with a short, verified handoff instead of a 200k-token transcript.
 You're deep in a session. The agent hits its usage limit, or gets stuck, or the context has grown so big that
 every call costs a fortune. Normally you'd open a new agent and spend twenty minutes explaining where you were.
 
-**AgentRelay does the briefing for you:**
+**Relayvora does the briefing for you:**
 
 - 🎯 **Reads the session:** your goal, your recent requests, and what the agent last reported.
 - 🔍 **Checks the ground truth:** uncommitted changes, commits made during the session, and real test results.
@@ -27,7 +27,7 @@ every call costs a fortune. Normally you'd open a new agent and spend twenty min
 - 🚀 **Launches the next agent** with the handoff loaded, in your terminal or your editor.
 
 ```sh
-agentrelay handoff --from codex --to claude --verify auto --confirm
+relayvora handoff --from codex --to claude --verify auto --confirm
 ```
 
 One command. New agent, full briefing, back in the fight.
@@ -40,15 +40,15 @@ One command. New agent, full briefing, back in the fight.
 
 Requirements: Node.js **22.13+** and Git 2.31+.
 
-Download `agentrelay-cli-<version>.tgz` from the
+Download `relayvora-cli-<version>.tgz` from the
 [latest release](https://github.com/Dagimassefa/Relayvora/releases), then:
 
 ```sh
-npm install -g ./agentrelay-cli-0.1.0-alpha.0.tgz
-agentrelay doctor              # checks Node, Git, the store, and finds Claude Code / Codex
+npm install -g ./relayvora-cli-0.1.0-alpha.0.tgz
+relayvora doctor              # checks Node, Git, the store, and finds Claude Code / Codex
 ```
 
-Remove it with `npm uninstall -g @agentrelay/cli`. Each release also has a SHA-256 file and a signed build
+Remove it with `npm uninstall -g @relayvora/cli`. Each release also has a SHA-256 file and a signed build
 attestation; see [verifying a download](docs/releasing.md#signed-draft-releases).
 
 ## Quick start
@@ -58,20 +58,20 @@ To build from source instead, you also need pnpm 10:
 ```sh
 pnpm install
 pnpm build
-cd apps/cli && npm link        # global `agentrelay` command; `pnpm build` picks up later changes
-agentrelay doctor              # checks Node, Git, the store, and finds Claude Code / Codex
+cd apps/cli && npm link        # global `relayvora` command; `pnpm build` picks up later changes
+relayvora doctor              # checks Node, Git, the store, and finds Claude Code / Codex
 ```
 
 Then, in any project where you have used Claude Code or Codex:
 
 ```sh
-agentrelay                                                        # home screen
-agentrelay handoff --from codex --to claude --verify auto --confirm
+relayvora                                                        # home screen
+relayvora handoff --from codex --to claude --verify auto --confirm
 ```
 
 That finds your latest Codex session for the project, runs the project's own checks, builds the handoff, shows a
 summary card, and (after you confirm) starts Claude Code in this terminal with the handoff loaded. Remove the global
-command with `npm unlink -g @agentrelay/cli`.
+command with `npm unlink -g @relayvora/cli`.
 
 ## How a relay works
 
@@ -85,7 +85,7 @@ command with `npm unlink -g @agentrelay/cli`.
    files always; failing output, then diffs, then new files while they fit; everything else as a "fetch this if
    needed" line. Every fact is labelled `[observed]`, `[user]`, `[agent-reported]` or `[inferred]`.
 5. **Launch** the target agent with the handoff, or copy it for an editor panel.
-6. **Measure** afterwards with `agentrelay report`.
+6. **Measure** afterwards with `relayvora report`.
 
 ## Does it save anything?
 
@@ -109,8 +109,8 @@ task done by continuing one session versus relaying to a fresh one, scored by hi
 
 ### Knowing when to relay
 
-AgentRelay works this out for you from each agent's own session records, and shows it on the home screen's
-**relay radar**, the checkpoint card's **WORTH** row, and as live alerts from `agentrelay watch`:
+Relayvora works this out for you from each agent's own session records, and shows it on the home screen's
+**relay radar**, the checkpoint card's **WORTH** row, and as live alerts from `relayvora watch`:
 
 | Signal | How it is detected | Verdict |
 | --- | --- | --- |
@@ -121,38 +121,38 @@ AgentRelay works this out for you from each agent's own session records, and sho
 | Small, warm session | Under ~60k tokens per call, recently active | continue |
 
 ```sh
-agentrelay watch --bell        # in a spare terminal; Ctrl+C to stop
+relayvora watch --bell        # in a spare terminal; Ctrl+C to stop
 ```
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| `agentrelay` | Home screen: project, sessions, **relay radar**, last relay, stats, suggested commands. Read-only. |
-| `agentrelay hooks install` / `status` / `uninstall` | Saves checkpoints automatically from agent hooks: limit hit, compaction, session end, turns. |
-| `agentrelay watch [--interval 60] [--bell]` | Alerts the moment a relay pays off: an agent hit or nears its limit, or a large session went cold. |
-| `agentrelay doctor` | Checks Node, platform/WSL, Git, the store, the project, and each agent (PATH or editor extension). |
-| `agentrelay init` | Registers the project (Git root) and creates `.agentrelay/`, which ignores itself in Git. |
-| `agentrelay sessions [-p claude\|codex] [--all]` | Lists agent sessions for this project, newest first. Read-only. |
-| `agentrelay handoff --to <agent> [options]` | Creates a checkpoint and shows the card; `--confirm` launches the agent. |
-| `agentrelay checkpoint create [options]` | Same capture as `handoff`, without the launch options. |
-| `agentrelay checkpoint list` / `show <id>` | Lists checkpoints; prints a handoff (`--budget` re-renders it, `--format json`). |
-| `agentrelay checkpoint delete <id> [--dry-run] [-y]` | Deletes a checkpoint in this project, its handoff, evidence and usage; asks first. |
-| `agentrelay checkpoint prune [--days 30] [--dry-run] [-y]` | Deletes expired checkpoints in this project using its retention setting, or the given age; asks first. |
-| `agentrelay launch <id> [--to <agent>]` | Starts the agent with an existing, possibly edited, handoff. |
-| `agentrelay report [id] [--reverify]` | Measures a relay: the session that continued it, context per call, onboarding, checks. |
-| `agentrelay export <id> [--out file]` | Exports a checkpoint, re-redacted. Asks before writing; never overwrites without `--force`. |
-| `agentrelay config show` | Shows the data directory, database path and project config. |
+| `relayvora` | Home screen: project, sessions, **relay radar**, last relay, stats, suggested commands. Read-only. |
+| `relayvora hooks install` / `status` / `uninstall` | Saves checkpoints automatically from agent hooks: limit hit, compaction, session end, turns. |
+| `relayvora watch [--interval 60] [--bell]` | Alerts the moment a relay pays off: an agent hit or nears its limit, or a large session went cold. |
+| `relayvora doctor` | Checks Node, platform/WSL, Git, the store, the project, and each agent (PATH or editor extension). |
+| `relayvora init` | Registers the project (Git root) and creates `.relayvora/`, which ignores itself in Git. |
+| `relayvora sessions [-p claude\|codex] [--all]` | Lists agent sessions for this project, newest first. Read-only. |
+| `relayvora handoff --to <agent> [options]` | Creates a checkpoint and shows the card; `--confirm` launches the agent. |
+| `relayvora checkpoint create [options]` | Same capture as `handoff`, without the launch options. |
+| `relayvora checkpoint list` / `show <id>` | Lists checkpoints; prints a handoff (`--budget` re-renders it, `--format json`). |
+| `relayvora checkpoint delete <id> [--dry-run] [-y]` | Deletes a checkpoint in this project, its handoff, evidence and usage; asks first. |
+| `relayvora checkpoint prune [--days 30] [--dry-run] [-y]` | Deletes expired checkpoints in this project using its retention setting, or the given age; asks first. |
+| `relayvora launch <id> [--to <agent>]` | Starts the agent with an existing, possibly edited, handoff. |
+| `relayvora report [id] [--reverify]` | Measures a relay: the session that continued it, context per call, onboarding, checks. |
+| `relayvora export <id> [--out file]` | Exports a checkpoint, re-redacted. Asks before writing; never overwrites without `--force`. |
+| `relayvora config show` | Shows the data directory, database path and project config. |
 
 Global flags: `--json` (machine-readable), `-C/--cwd <dir>`, `-v/--verbose`, `--no-color`.
 
 ### Automatic checkpoints (hooks)
 
 ```sh
-agentrelay hooks install            # Claude Code (this project) + Codex; --scope user for all projects; --dry-run to preview
+relayvora hooks install            # Claude Code (this project) + Codex; --scope user for all projects; --dry-run to preview
 ```
 
-The handoff is then waiting before you need it. Claude Code runs AgentRelay on:
+The handoff is then waiting before you need it. Claude Code runs Relayvora on:
 
 | Event | When | Checkpoint |
 | --- | --- | --- |
@@ -164,7 +164,7 @@ The handoff is then waiting before you need it. Claude Code runs AgentRelay on:
 Codex runs it through its `notify` setting at the end of each turn (throttled the same way). Hooks hand the work to a
 background process and return in well under a second, so they never slow the agent; problems go to `hooks.log` in the
 data directory. The newest 5 automatic checkpoints per session are kept (`--keep`). When the relay radar or `watch`
-flags a limit and a hook already saved the latest state, the suggested command is simply `agentrelay launch <id>`.
+flags a limit and a hook already saved the latest state, the suggested command is simply `relayvora launch <id>`.
 
 The installer merges into existing settings and leaves other hooks untouched, writes Claude Code hooks in exec form (no
 shell, works on Windows), keeps `.claude/settings.local.json` out of Git, and never replaces an existing Codex
@@ -173,7 +173,7 @@ shell, works on Windows), keeps `.claude/settings.local.json` out of Git, and ne
 ### Handoff and checkpoint options
 
 ```sh
-agentrelay handoff --from codex --to claude \
+relayvora handoff --from codex --to claude \
   --goal "Fix leap-year handling" --constraint "Keep the public API" --pending "Handle years divisible by 400" \
   --verify auto --budget 4000 --confirm
 ```
@@ -191,7 +191,7 @@ agentrelay handoff --from codex --to claude \
 
 ### Launching
 
-AgentRelay starts the agent's interactive session in your terminal, in the project folder, through its documented
+Relayvora starts the agent's interactive session in your terminal, in the project folder, through its documented
 command line (`claude [prompt]`, `codex [PROMPT]`). It uses the CLI on PATH, otherwise the copy bundled in your editor
 extension. Just before launching it re-checks the repository against the checkpoint; if nothing changed, the agent is
 told it can skip re-checking. The handoff file as it is on disk, including your edits, goes into the first message
@@ -201,14 +201,14 @@ every launch is recorded in the audit log with hashes of what was sent.
 ### VS Code, Cursor and other editors
 
 No global install is needed. The Claude Code and Codex extensions write sessions to `~/.claude` and `~/.codex` and
-ship their own CLI, which AgentRelay finds in VS Code, VS Code Insiders, Cursor, Windsurf, VSCodium and VS Code Server.
+ship their own CLI, which Relayvora finds in VS Code, VS Code Insiders, Cursor, Windsurf, VSCodium and VS Code Server.
 To continue in an editor panel instead of a terminal, add `--copy` and paste, or tell the agent the one-line message
-the card prints (`Continue the task described in .agentrelay/handoffs/<id>.md ...`).
+the card prints (`Continue the task described in .relayvora/handoffs/<id>.md ...`).
 
 ### Measuring a relay
 
 ```sh
-agentrelay report --reverify
+relayvora report --reverify
 ```
 
 `report` finds the session that continued a checkpoint (started after it, with a prompt mentioning its id, whether
@@ -220,8 +220,8 @@ screen.
 ## Terminal output
 
 Colour adapts to the terminal and turns off when output is piped, with `--json`, `--no-color` or `NO_COLOR`
-(`FORCE_COLOR=1..3` forces it on; `AGENTRELAY_ASCII=1` avoids Unicode block characters). Progress and the summary card
-go to stderr, so `agentrelay handoff ... > handoff.md` captures only the Markdown.
+(`FORCE_COLOR=1..3` forces it on; `RELAYVORA_ASCII=1` avoids Unicode block characters). Progress and the summary card
+go to stderr, so `relayvora handoff ... > handoff.md` captures only the Markdown.
 
 | Exit code | Meaning |
 | --- | --- |
@@ -236,24 +236,24 @@ go to stderr, so `agentrelay handoff ... > handoff.md` captures only the Markdow
 ## Privacy and data
 
 Checkpoint retention defaults to **30 days**, applied for the current project after a new checkpoint is saved.
-Set `retentionDays` in `.agentrelay/config.json` to a positive number of days, or `null` to keep everything.
+Set `retentionDays` in `.relayvora/config.json` to a positive number of days, or `null` to keep everything.
 To preview or apply cleanup immediately:
 
 ```sh
-agentrelay checkpoint prune --dry-run
-agentrelay checkpoint prune --yes
-agentrelay checkpoint delete <id> --dry-run
-agentrelay checkpoint delete <id> --yes
+relayvora checkpoint prune --dry-run
+relayvora checkpoint prune --yes
+relayvora checkpoint delete <id> --dry-run
+relayvora checkpoint delete <id> --yes
 ```
 
-Cleanup removes AgentRelay's checkpoint, handoff file, evidence and usage records. Vendor session transcripts
+Cleanup removes Relayvora's checkpoint, handoff file, evidence and usage records. Vendor session transcripts
 and audit events are kept. Automatic hook checkpoints also obey their per-session `--keep` limit.
 Retention is age-based, so it also removes edited handoff files once their checkpoint expires; export anything you want to keep.
 
 - **Local only.** Nothing is uploaded and there is no telemetry.
-- **Global store:** SQLite at `%LOCALAPPDATA%\agentrelay` (Windows), `~/Library/Application Support/agentrelay`
-  (macOS), `$XDG_DATA_HOME/agentrelay` or `~/.local/share/agentrelay` (Linux). Override with `AGENTRELAY_HOME`.
-- **Per project:** `.agentrelay/` (config and handoff files), ignored by Git through its own `.gitignore`.
+- **Global store:** SQLite at `%LOCALAPPDATA%\relayvora` (Windows), `~/Library/Application Support/relayvora`
+  (macOS), `$XDG_DATA_HOME/relayvora` or `~/.local/share/relayvora` (Linux). Override with `RELAYVORA_HOME`.
+- **Per project:** `.relayvora/` (config and handoff files), ignored by Git through its own `.gitignore`.
 - **Agent sessions** are read from `CLAUDE_CONFIG_DIR` (default `~/.claude`) and `CODEX_HOME` (default `~/.codex`) and
   never written to. Session formats are not documented by the vendors, so reading them is best-effort.
 
@@ -263,7 +263,7 @@ More in [docs/security/threat-model.md](docs/security/threat-model.md) and
 ## Repository layout
 
 ```
-apps/cli/                  the agentrelay command: commands, launch, report, terminal UI
+apps/cli/                  the relayvora command: commands, launch, report, terminal UI
 packages/core/             checkpoint schema, handoff builder and renderer, redaction, check detection, safe subprocess
 packages/storage/          SQLite store (node:sqlite) with versioned migrations
 packages/git/              read-only Git evidence: status, diffs, untracked files, session commits

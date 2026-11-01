@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Matched-task benchmark: does relaying through AgentRelay save tokens versus continuing the session?
+ * Matched-task benchmark: does relaying through Relayvora save tokens versus continuing the session?
  *
  * Each task has two steps. Step A builds up a session. Step B is the follow-up, done either
  *   normal: in the same session (claude -p --resume), or
- *   relay:  in a fresh session started from an AgentRelay handoff (checkpoint + launch prompt).
+ *   relay:  in a fresh session started from an Relayvora handoff (checkpoint + launch prompt).
  * Both arms do their own step A in their own copy of the task, so step B starts from equivalent states.
  * Usage comes from each agent's own JSON output; quality from hidden tests the agents never see.
  *
@@ -35,13 +35,13 @@ const run = async (file, argv, opts = {}) => {
   return { code: r.exitCode ?? 1, stdout: r.stdout, stderr: r.stderr };
 };
 
-const agentrelay = (argv, cwd, env) => run(process.execPath, [CLI, ...argv], { cwd, env: { ...process.env, ...env } });
+const relayvora = (argv, cwd, env) => run(process.execPath, [CLI, ...argv], { cwd, env: { ...process.env, ...env } });
 
 async function agentPath(agent) {
-  const r = await agentrelay(['--json', 'doctor'], process.cwd());
+  const r = await relayvora(['--json', 'doctor'], process.cwd());
   const check = JSON.parse(r.stdout).checks.find((c) => c.id === `adapter:${agent}`);
   const p = check?.detail?.probe?.path;
-  if (!p) throw new Error(`${agent} not found (agentrelay doctor)`);
+  if (!p) throw new Error(`${agent} not found (relayvora doctor)`);
   return p;
 }
 
@@ -165,7 +165,7 @@ async function hiddenScore(taskDir, dir, hiddenTest) {
 
 async function runJob(bin, agent, scenario, root, task, taskDir, arm, rep, log) {
   const dir = path.join(root, `${agent}-${scenario}-${task.name}-${arm}-${rep}`);
-  const env = { AGENTRELAY_HOME: path.join(dir, '..', `.agentrelay-home-${task.name}-${arm}-${rep}`) };
+  const env = { RELAYVORA_HOME: path.join(dir, '..', `.relayvora-home-${task.name}-${arm}-${rep}`) };
   await setupRepo(task, dir);
   const result = { task: task.name, agent, scenario, arm, rep, dir };
 
@@ -179,20 +179,20 @@ async function runJob(bin, agent, scenario, root, task, taskDir, arm, rep, log) 
   let nextPrompt = task.promptB;
   if (arm === 'relay') {
     const t0 = Date.now();
-    const cp = await agentrelay(
+    const cp = await relayvora(
       ['--json', 'checkpoint', 'create', '--from', agent, '--session', a.json.session_id, '--to', agent, '--goal', task.promptB, '--verify', 'auto'],
       dir,
       env,
     );
     if (cp.code !== 0) throw new Error(`checkpoint failed: ${cp.stdout}${cp.stderr}`);
     const checkpoint = JSON.parse(cp.stdout);
-    const plan = JSON.parse((await agentrelay(['--json', 'launch', checkpoint.id, '--dry-run'], dir, env)).stdout);
+    const plan = JSON.parse((await relayvora(['--json', 'launch', checkpoint.id, '--dry-run'], dir, env)).stdout);
     result.relay = {
       checkpointId: checkpoint.id,
       handoffTokens: checkpoint.handoff.estimatedTokens,
       launchMode: plan.mode,
       repoFresh: plan.freshness.fresh,
-      agentRelayMs: Date.now() - t0,
+      relayvoraMs: Date.now() - t0,
     };
     nextPrompt = plan.prompt;
   }
@@ -272,12 +272,12 @@ function markdown(summary, meta) {
   const money = (v) => (v === null ? '?' : `$${v.toFixed(3)}`);
   const k = (v) => (v === null ? '?' : `${Math.round(v / 1000)}k`);
   const p = (v) => (v === null ? '?' : `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`);
-  const lines = [`# AgentRelay benchmark ${meta.startedAt}`, '', `Agents: ${meta.versions ? JSON.stringify(meta.versions) : `Claude Code ${meta.claudeVersion}`}. Reps per arm: ${meta.reps}.`, '', 'Unknown costs are shown as ?; cold runs record idle time and do not guarantee provider cache expiry.', ''];
+  const lines = [`# Relayvora benchmark ${meta.startedAt}`, '', `Agents: ${meta.versions ? JSON.stringify(meta.versions) : `Claude Code ${meta.claudeVersion}`}. Reps per arm: ${meta.reps}.`, '', 'Unknown costs are shown as ?; cold runs record idle time and do not guarantee provider cache expiry.', ''];
   for (const [task, s] of Object.entries(summary)) {
     lines.push(
       `## ${task}`,
       '',
-      '| | Normal (same session) | AgentRelay (fresh session) | Relay vs normal |',
+      '| | Normal (same session) | Relayvora (fresh session) | Relay vs normal |',
       '| --- | --- | --- | --- |',
       `| Context per call at handoff | ${k(s.normal.contextAtHandoff)} | ${k(s.relay.contextAtHandoff)} | |`,
       `| Step B cost | ${money(s.normal.stepBCost)} | ${money(s.relay.stepBCost)} | ${p(s.delta.stepBCost)} |`,
@@ -336,7 +336,7 @@ async function main() {
     versions[agent] = (await run(bins[agent], ['--version'])).stdout.trim();
   }
   const startedAt = new Date().toISOString();
-  const root = path.join(os.tmpdir(), 'agentrelay-bench', startedAt.replace(/[:.]/g, '-'));
+  const root = path.join(os.tmpdir(), 'relayvora-bench', startedAt.replace(/[:.]/g, '-'));
   fs.mkdirSync(root, { recursive: true });
   const log = (m) => process.stderr.write(`[${new Date().toISOString().slice(11, 19)}] ${m}\n`);
   log(`Agents ${JSON.stringify(versions)}; ${plannedRuns} runs; work dir ${root}`);

@@ -1,12 +1,12 @@
-# AgentRelay benchmark
+# Relayvora benchmark
 
-Does handing a task to a fresh session through AgentRelay save tokens or money compared with continuing
+Does handing a task to a fresh session through Relayvora save tokens or money compared with continuing
 the same session? `run.mjs` measures it on matched two-step tasks:
 
 - **Step A** builds up a session (small: a calculator; large: read a 43-file, ~58k-token codebase and document it).
 - **Step B** is the follow-up (small: an expression parser; large: discount codes touching two files), done either
   - **normal**: in the same session (`claude -p --resume`), or
-  - **relay**: in a fresh session started from an AgentRelay handoff (`checkpoint create --verify auto`, launch prompt).
+  - **relay**: in a fresh session started from an Relayvora handoff (`checkpoint create --verify auto`, launch prompt).
 - Each arm does its own step A in its own copy of the task. Quality is scored with **hidden tests** the agents never see.
 - Usage and cost come from Claude Code's own JSON output.
 

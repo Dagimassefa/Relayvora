@@ -3,16 +3,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import {
-  AgentRelayError,
+  RelayvoraError,
   ExitCode,
   safeParseCheckpoint,
   sha256,
   type Checkpoint,
   type SessionSummary,
-} from '@agentrelay/core';
+} from '@relayvora/core';
 import { LATEST_SCHEMA_VERSION, MIGRATIONS, type Migration } from './migrations.js';
 
-export const DB_FILENAME = 'agentrelay.db';
+export const DB_FILENAME = 'relayvora.db';
 
 export interface ProjectRecord {
   id: string;
@@ -142,8 +142,8 @@ export class Store {
     this.transaction(() => {
       const current = this.schemaVersion();
       if (current > latest) {
-        throw new AgentRelayError(
-          `Database schema v${current} is newer than this AgentRelay supports (v${latest}). Upgrade AgentRelay.`,
+        throw new RelayvoraError(
+          `Database schema v${current} is newer than this Relayvora supports (v${latest}). Upgrade Relayvora.`,
           ExitCode.Unsupported,
         );
       }
@@ -360,7 +360,7 @@ export class Store {
     const exact = rows.find((r) => r.id === idOrPrefix);
     const row = exact ?? (rows.length === 1 ? rows[0] : undefined);
     if (!row && rows.length > 1) {
-      throw new AgentRelayError(
+      throw new RelayvoraError(
         `Checkpoint id "${idOrPrefix}" is ambiguous: ${rows.map((r) => r.id).join(', ')}`,
         ExitCode.Usage,
       );
@@ -368,7 +368,7 @@ export class Store {
     if (!row) return undefined;
     const parsed = safeParseCheckpoint(JSON.parse(row.body));
     if (!parsed.success) {
-      throw new AgentRelayError(`Stored checkpoint ${row.id} failed validation: ${parsed.error.message}`, ExitCode.Failure);
+      throw new RelayvoraError(`Stored checkpoint ${row.id} failed validation: ${parsed.error.message}`, ExitCode.Failure);
     }
     return parsed.data;
   }

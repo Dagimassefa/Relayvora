@@ -55,8 +55,8 @@ function pathApi(platform: NodeJS.Platform): path.PlatformPath {
 }
 
 /**
- * Per-user directory for AgentRelay's global state (SQLite store, logs).
- * `AGENTRELAY_HOME` overrides the platform default.
+ * Per-user directory for Relayvora's global state (SQLite store, logs).
+ * `RELAYVORA_HOME` overrides the platform default.
  */
 export function dataDir(
   env: NodeJS.ProcessEnv = process.env,
@@ -64,14 +64,14 @@ export function dataDir(
   home: string = os.homedir(),
 ): string {
   const p = pathApi(platform);
-  if (env.AGENTRELAY_HOME) return p.resolve(env.AGENTRELAY_HOME);
+  if (env.RELAYVORA_HOME) return p.resolve(env.RELAYVORA_HOME);
   switch (platform) {
     case 'win32':
-      return p.join(env.LOCALAPPDATA ?? p.join(home, 'AppData', 'Local'), 'agentrelay');
+      return p.join(env.LOCALAPPDATA ?? p.join(home, 'AppData', 'Local'), 'relayvora');
     case 'darwin':
-      return p.join(home, 'Library', 'Application Support', 'agentrelay');
+      return p.join(home, 'Library', 'Application Support', 'relayvora');
     default:
-      return p.join(env.XDG_DATA_HOME ?? p.join(home, '.local', 'share'), 'agentrelay');
+      return p.join(env.XDG_DATA_HOME ?? p.join(home, '.local', 'share'), 'relayvora');
   }
 }
 

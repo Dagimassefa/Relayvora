@@ -1,4 +1,4 @@
-import { assessRelay, type RelayAssessment, type SessionSummary, type TranscriptDigest } from '@agentrelay/core';
+import { assessRelay, type RelayAssessment, type SessionSummary, type TranscriptDigest } from '@relayvora/core';
 import { type CliContext, openStore } from './context.js';
 import { compact, providerChip, relativeTime, statusIcon } from './ui/components.js';
 import type { Theme } from './ui/theme.js';
@@ -91,8 +91,8 @@ export async function relayRadar(ctx: CliContext, projectRoot: string, now: Date
       assessment: assessRelay({ agent, provider: adapter.id, contextTokens, health: digest.health, now }),
       ready,
       suggestion: ready
-        ? `agentrelay launch ${ready.id} --to ${other}`
-        : `agentrelay handoff --session ${session.id.slice(0, 8)} --to ${other} --verify auto --confirm`,
+        ? `relayvora launch ${ready.id} --to ${other}`
+        : `relayvora handoff --session ${session.id.slice(0, 8)} --to ${other} --verify auto --confirm`,
     });
   }
   return out;

@@ -121,7 +121,7 @@ export function detectColorLevel(stream: NodeJS.WriteStream, env: NodeJS.Process
 }
 
 function detectUnicode(env: NodeJS.ProcessEnv): boolean {
-  if (env.AGENTRELAY_ASCII === '1') return false;
+  if (env.RELAYVORA_ASCII === '1') return false;
   if (process.platform !== 'win32') return env.TERM !== 'linux';
   // Every modern Windows host (Windows Terminal, VS Code, conhost on Win10+) renders these glyphs.
   return true;

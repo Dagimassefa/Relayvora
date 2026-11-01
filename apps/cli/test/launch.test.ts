@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { runCommand, type AgentAdapter } from '@agentrelay/core';
+import { runCommand, type AgentAdapter } from '@relayvora/core';
 import { createCheckpoint } from '../src/checkpoint-service.js';
 import { createContext, type CliContext } from '../src/context.js';
 import { checkFreshness, executeLaunch, launchPrompt, planLaunch, pointerPrompt } from '../src/launch.js';
@@ -38,7 +38,7 @@ beforeEach(async () => {
   fs.mkdirSync(project);
   await runCommand('git', ['init', '-q', project]);
   record = path.join(home, 'record.json');
-  const env = { ...process.env, AGENTRELAY_HOME: path.join(home, 'state'), FAKE_AGENT_RECORD: record };
+  const env = { ...process.env, RELAYVORA_HOME: path.join(home, 'state'), FAKE_AGENT_RECORD: record };
   ctx = createContext({ cwd: project, env, adapters: [fakeAgent()] });
 });
 
@@ -54,7 +54,7 @@ describe('planLaunch', () => {
     const plan = await planLaunch(ctx, cp, null);
     expect(plan).toMatchObject({ target: 'fake', executable: process.execPath, cwd: cp.project.root, version: 'fake 1.0', mode: 'inline' });
     expect(plan.freshness).toEqual({ checked: true, fresh: true, differences: [] });
-    expect(plan.prompt).toContain('AgentRelay re-checked the repository just before starting this session');
+    expect(plan.prompt).toContain('Relayvora re-checked the repository just before starting this session');
     expect(plan.prompt).toContain(fs.readFileSync(plan.handoffFile, 'utf8'));
     expect(plan.args.at(-1)).toBe(plan.prompt);
   });
@@ -65,7 +65,7 @@ describe('planLaunch', () => {
     const { prompt, mode } = launchPrompt(cp, plan.handoffFile, plan.freshness, false);
     expect(mode).toBe('pointer');
     expect(prompt.startsWith(pointerPrompt(cp, plan.handoffFile))).toBe(true);
-    expect(prompt).toContain(`.agentrelay/handoffs/${cp.id}.md`);
+    expect(prompt).toContain(`.relayvora/handoffs/${cp.id}.md`);
     expect(prompt).toContain('re-checked');
   });
 
@@ -114,7 +114,7 @@ describe('executeLaunch', () => {
     expect(seen.argv).toEqual([plan.prompt]);
     expect(fs.realpathSync.native(seen.cwd)).toBe(fs.realpathSync.native(cp.project.root));
 
-    const { Store } = await import('@agentrelay/storage');
+    const { Store } = await import('@relayvora/storage');
     const store = Store.openInDir(ctx.dataDir);
     const row = store.db.prepare("SELECT target, details_json FROM audit_events WHERE action = 'handoff.launch'").get() as {
       target: string;

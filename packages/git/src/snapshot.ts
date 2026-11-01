@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { isSensitivePath, isWithin, sha256, type GitFileChange, type GitSnapshot } from '@agentrelay/core';
+import { isSensitivePath, isWithin, sha256, type GitFileChange, type GitSnapshot } from '@relayvora/core';
 import { getRepoState, git, gitOk } from './repo.js';
 
 /** Git's well-known empty tree; diffing against it shows everything as added in a repo without commits. */

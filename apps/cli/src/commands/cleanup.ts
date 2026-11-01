@@ -1,4 +1,4 @@
-import { AgentRelayError, canonicalPath, ExitCode } from '@agentrelay/core';
+import { RelayvoraError, canonicalPath, ExitCode } from '@relayvora/core';
 import { confirmOrAbort } from '../confirm.js';
 import { type CliContext, openStore } from '../context.js';
 import { locateProject, readProjectConfig } from '../project.js';
@@ -16,12 +16,12 @@ export async function runCleanup(ctx: CliContext, id: string | null, options: Cl
     if (id !== null) {
       const cp = store.getCheckpoint(id);
       if (!cp || canonicalPath(cp.project.root) !== canonicalPath(root)) {
-        throw new AgentRelayError(`No checkpoint found in this project with id "${id}"`, ExitCode.NotFound);
+        throw new RelayvoraError(`No checkpoint found in this project with id "${id}"`, ExitCode.NotFound);
       }
       ids = [cp.id];
     } else {
       const days = options.days ?? readProjectConfig(root)?.retentionDays ?? null;
-      if (days !== null && (!Number.isInteger(days) || days <= 0)) throw new AgentRelayError('days must be a positive integer', ExitCode.Usage);
+      if (days !== null && (!Number.isInteger(days) || days <= 0)) throw new RelayvoraError('days must be a positive integer', ExitCode.Usage);
       ids = days === null || !project ? [] : store.expiredCheckpoints(project.id, new Date(Date.now() - days * 86_400_000).toISOString()).map(r => r.id);
     }
     const result: CleanupResult = { dryRun: Boolean(options.dryRun), checkpointIds: ids, deleted: 0 };

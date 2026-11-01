@@ -6,20 +6,20 @@ import { compareVersions } from '../src/version.js';
 import { dataDir, detectWsl, findExecutable, isWithin, pathsEqual } from '../src/platform.js';
 
 describe('dataDir', () => {
-  it('honours AGENTRELAY_HOME', () => {
-    expect(dataDir({ AGENTRELAY_HOME: '/tmp/ar' }, 'linux', '/home/u')).toBe('/tmp/ar');
+  it('honours RELAYVORA_HOME', () => {
+    expect(dataDir({ RELAYVORA_HOME: '/tmp/ar' }, 'linux', '/home/u')).toBe('/tmp/ar');
   });
   it('uses LOCALAPPDATA on Windows', () => {
     expect(dataDir({ LOCALAPPDATA: 'C:\\Users\\Ana Lú\\AppData\\Local' }, 'win32', 'C:\\Users\\Ana Lú')).toBe(
-      'C:\\Users\\Ana Lú\\AppData\\Local\\agentrelay',
+      'C:\\Users\\Ana Lú\\AppData\\Local\\relayvora',
     );
   });
   it('uses Application Support on macOS', () => {
-    expect(dataDir({}, 'darwin', '/Users/u')).toBe('/Users/u/Library/Application Support/agentrelay');
+    expect(dataDir({}, 'darwin', '/Users/u')).toBe('/Users/u/Library/Application Support/relayvora');
   });
   it('uses XDG_DATA_HOME, then ~/.local/share, on Linux', () => {
-    expect(dataDir({ XDG_DATA_HOME: '/data' }, 'linux', '/home/u')).toBe('/data/agentrelay');
-    expect(dataDir({}, 'linux', '/home/u')).toBe('/home/u/.local/share/agentrelay');
+    expect(dataDir({ XDG_DATA_HOME: '/data' }, 'linux', '/home/u')).toBe('/data/relayvora');
+    expect(dataDir({}, 'linux', '/home/u')).toBe('/home/u/.local/share/relayvora');
   });
 });
 

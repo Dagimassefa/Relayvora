@@ -1,8 +1,8 @@
 {
-  "name": "@agentrelay/benchmarks",
+  "name": "@relayvora/benchmarks",
   "version": "0.0.0",
   "private": true,
-  "description": "Matched-task benchmark: continue a session vs relay through AgentRelay",
+  "description": "Matched-task benchmark: continue a session vs relay through Relayvora",
   "type": "module",
   "scripts": {
     "bench": "node run.mjs"

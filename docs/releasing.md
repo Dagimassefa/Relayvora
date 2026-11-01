@@ -1,4 +1,4 @@
-# Releasing AgentRelay
+# Releasing Relayvora
 
 The version-one CLI is packaged as a standalone npm tarball. It bundles all runtime JavaScript dependencies;
 users need Node 22.13+ and Git, but do not need pnpm or this source checkout. The VS Code extension belongs to version two.
@@ -10,9 +10,9 @@ pnpm install --frozen-lockfile
 pnpm test
 pnpm release:pack
 pnpm release:smoke
-npm install -g ./release/agentrelay-cli-0.1.0-alpha.0.tgz
-agentrelay --version
-agentrelay doctor
+npm install -g ./release/relayvora-cli-0.1.0-alpha.0.tgz
+relayvora --version
+relayvora doctor
 ```
 
 The pack command creates a tarball, a SHA-256 sidecar and `release/manifest.json`. The smoke test installs that
@@ -38,8 +38,8 @@ See [GitHub's attestation documentation](https://docs.github.com/en/actions/how-
 Verify a downloaded artifact against the actual hosting repository:
 
 ```sh
-gh attestation verify agentrelay-cli-0.1.0-alpha.0.tgz -R OWNER/REPOSITORY
-npm install -g ./agentrelay-cli-0.1.0-alpha.0.tgz
+gh attestation verify relayvora-cli-0.1.0-alpha.0.tgz -R OWNER/REPOSITORY
+npm install -g ./relayvora-cli-0.1.0-alpha.0.tgz
 ```
 
 This is a signed provenance attestation for the JavaScript package. No platform executable is produced.
@@ -50,10 +50,10 @@ Local packaging does not create a signature; the GitHub job does. SHA-256 sideca
 GitHub tarballs can be installed directly. Optional registry publication is a separate reviewed action:
 
 ```sh
-npm publish ./release/agentrelay-cli-0.1.0-alpha.0.tgz --access public --tag alpha
+npm publish ./release/relayvora-cli-0.1.0-alpha.0.tgz --access public --tag alpha
 ```
 
-The publisher needs rights to the `@agentrelay` scope. The generated package is MIT-licensed and includes `LICENSE`
+The publisher needs rights to the `@relayvora` scope. The generated package is MIT-licensed and includes `LICENSE`
 and the bundled dependency license notices. The workflow does not publish to npm automatically.
 
 ## Measurements

@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const CHECKPOINT_SCHEMA_VERSION = '0.1';
 
 /**
- * Where a fact came from. `observed` facts were captured by AgentRelay itself (git, a command
+ * Where a fact came from. `observed` facts were captured by Relayvora itself (git, a command
  * it ran, a file hash) and must cite evidence. Everything an agent says about itself is
  * `agent-reported` until verified.
  */

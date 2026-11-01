@@ -1,4 +1,4 @@
-import { AGENTRELAY_VERSION, AgentRelayError, ExitCode, type Checkpoint } from '@agentrelay/core';
+import { RELAYVORA_VERSION, RelayvoraError, ExitCode, type Checkpoint } from '@relayvora/core';
 import { Command, CommanderError, InvalidArgumentError, Option } from 'commander';
 import { ZodError } from 'zod';
 import { type CreateCheckpointOptions, type CreateCheckpointResult, createCheckpoint, loadCheckpoint } from './checkpoint-service.js';
@@ -170,7 +170,7 @@ async function launchWithUi(ctx: CliContext, cp: Checkpoint, target: string | nu
   const result = await executeLaunch(ctx, plan, flags.yes === undefined ? {} : { yes: flags.yes });
   const ok = result.exitCode === 0 || result.exitCode === null;
   process.stderr.write(
-    `\n  ${statusIcon(t, ok ? 'ok' : 'warn')} ${t.bold(`back from ${plan.displayName}`)} ${t.dim(`(exit ${result.exitCode ?? 'signal'})`)}  ${t.dim(`relay again: agentrelay handoff --from ${plan.target} --to ${plan.target === 'claude' ? 'codex' : 'claude'}`)}\n\n`,
+    `\n  ${statusIcon(t, ok ? 'ok' : 'warn')} ${t.bold(`back from ${plan.displayName}`)} ${t.dim(`(exit ${result.exitCode ?? 'signal'})`)}  ${t.dim(`relay again: relayvora handoff --from ${plan.target} --to ${plan.target === 'claude' ? 'codex' : 'claude'}`)}\n\n`,
   );
 }
 
@@ -207,9 +207,9 @@ function styleHelp(program: Command, t: Theme): void {
 
 export function buildProgram(ui: Ui = PLAIN_UI): Command {
   const program = new Command()
-    .name('agentrelay')
+    .name('relayvora')
     .description('Move unfinished work between AI coding agents with compact, evidence-backed checkpoints.')
-    .version(AGENTRELAY_VERSION, '-V, --version')
+    .version(RELAYVORA_VERSION, '-V, --version')
     .option('--json', 'machine-readable JSON output')
     .option('-C, --cwd <dir>', 'run as if started in <dir>')
     .option('-v, --verbose', 'show extra detail and warnings')
@@ -217,14 +217,14 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
     .showHelpAfterError()
     .exitOverride();
   styleHelp(program, ui.out);
-  program.addHelpText('beforeAll', () => (ui.out.level > 0 ? banner(ui.out, AGENTRELAY_VERSION) : ''));
+  program.addHelpText('beforeAll', () => (ui.out.level > 0 ? banner(ui.out, RELAYVORA_VERSION) : ''));
 
   const ctxFor = (cmd: Command) => {
     const opts = cmd.optsWithGlobals<GlobalOptions>();
     return { opts, ctx: createContext(opts.cwd ? { cwd: opts.cwd } : {}) };
   };
 
-  // Bare `agentrelay`: the home screen.
+  // Bare `relayvora`: the home screen.
   program.action(async (_options, cmd: Command) => {
     const { opts, ctx } = ctxFor(cmd);
     emit(opts, await runHome(ctx), (h) => renderHome(h, ui.out));
@@ -232,7 +232,7 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
 
   program
     .command('init')
-    .description('register the current project and create .agentrelay/ (ignored by Git)')
+    .description('register the current project and create .relayvora/ (ignored by Git)')
     .action(async (_options, cmd: Command) => {
       const { opts, ctx } = ctxFor(cmd);
       emit(opts, await runInit(ctx), (r) => renderInit(r, ui.out));
@@ -350,7 +350,7 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
   ).action(async (flags: CheckpointFlags & LaunchFlags & { confirm?: boolean; print?: boolean }, cmd: Command) => {
     const { opts, ctx } = ctxFor(cmd);
     if (flags.confirm && opts.json && !flags.dryRun) {
-      throw new AgentRelayError('--json cannot be combined with launching an agent; use --dry-run, or drop --json.', ExitCode.Usage);
+      throw new RelayvoraError('--json cannot be combined with launching an agent; use --dry-run, or drop --json.', ExitCode.Usage);
     }
     if (flags.confirm) selectAdapters(ctx, flags.to); // fail on an unknown agent before doing any work
     const result = await createCheckpoint(ctx, toCreateOptions(flags, opts, ui));
@@ -378,7 +378,7 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
     .action(async (id: string, flags: LaunchFlags & { to?: string }, cmd: Command) => {
       const { opts, ctx } = ctxFor(cmd);
       if (opts.json && !flags.dryRun) {
-        throw new AgentRelayError('--json cannot be combined with launching an agent; use --dry-run, or drop --json.', ExitCode.Usage);
+        throw new RelayvoraError('--json cannot be combined with launching an agent; use --dry-run, or drop --json.', ExitCode.Usage);
       }
       const cp = await loadCheckpoint(ctx, id);
       if (opts.json) {
@@ -441,7 +441,7 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
     });
   hooks
     .command('status')
-    .description('show where AgentRelay hooks are installed')
+    .description('show where Relayvora hooks are installed')
     .action(async (_o, cmd: Command) => {
       const { opts, ctx } = ctxFor(cmd);
       emit(opts, await runHooksStatus(ctx), (r) => renderHooksStatus(r, ui.out));
@@ -499,7 +499,7 @@ function reportError(message: string, code: ExitCode, json: boolean, t: Theme): 
   if (json) {
     process.stdout.write(`${JSON.stringify({ error: { message, exitCode: code } }, null, 2)}\n`);
   } else {
-    const hint = code === ExitCode.Usage ? `\n  ${t.dim('run agentrelay --help for usage')}` : '';
+    const hint = code === ExitCode.Usage ? `\n  ${t.dim('run relayvora --help for usage')}` : '';
     process.stderr.write(`\n  ${t.fg('red', t.sym.fail)} ${t.bold(t.fg('red', 'error'))} ${message}${hint}\n\n`);
   }
   return code;
@@ -522,12 +522,12 @@ export async function main(argv: string[]): Promise<number> {
       // Help and version are reported as "errors" under exitOverride; commander already printed them.
       return error.exitCode === 0 ? ExitCode.Ok : ExitCode.Usage;
     }
-    if (error instanceof AgentRelayError) return reportError(error.message, error.exitCode, json, ui.err);
+    if (error instanceof RelayvoraError) return reportError(error.message, error.exitCode, json, ui.err);
     if (error instanceof ZodError) {
       const detail = error.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`).join('; ');
       return reportError(`Invalid data: ${detail}`, ExitCode.Failure, json, ui.err);
     }
-    const message = error instanceof Error ? (process.env.AGENTRELAY_DEBUG ? error.stack ?? error.message : error.message) : String(error);
+    const message = error instanceof Error ? (process.env.RELAYVORA_DEBUG ? error.stack ?? error.message : error.message) : String(error);
     return reportError(message, ExitCode.Failure, json, ui.err);
   }
 }

@@ -132,8 +132,8 @@ function buildItems(cp: Checkpoint, maxFileRows: number): ContextItem[] {
     [
       `# Handoff${target}: ${cp.task.goal.text.split('\n')[0]!.slice(0, 100)}`,
       '',
-      `Checkpoint \`${cp.id}\`, created ${cp.createdAt} by AgentRelay ${from}.`,
-      'Labels: **[observed]** = verified by AgentRelay from Git or a command it ran; **[user]** = stated by the user;',
+      `Checkpoint \`${cp.id}\`, created ${cp.createdAt} by Relayvora ${from}.`,
+      'Labels: **[observed]** = verified by Relayvora from Git or a command it ran; **[user]** = stated by the user;',
       '**[agent-reported]** / **[inferred]** = unverified, check before relying on it.',
     ].join('\n'),
   );
@@ -195,7 +195,7 @@ function buildItems(cp: Checkpoint, maxFileRows: number): ContextItem[] {
   if (cp.task.lastAgentReport) {
     push('report', 'changed', factLine(cp.task.lastAgentReport), {
       label: "previous agent's last report",
-      retrieve: `\`agentrelay checkpoint show ${cp.id} --json\` (task.lastAgentReport)`,
+      retrieve: `\`relayvora checkpoint show ${cp.id} --json\` (task.lastAgentReport)`,
     });
   }
 
@@ -226,7 +226,7 @@ function buildItems(cp: Checkpoint, maxFileRows: number): ContextItem[] {
     'instructions',
     'required',
     [
-      '1. If the message that started this session says AgentRelay re-checked the repository, trust the state above; otherwise run `git status` once before editing.',
+      '1. If the message that started this session says Relayvora re-checked the repository, trust the state above; otherwise run `git status` once before editing.',
       '2. Treat [agent-reported] and [inferred] items as hints, and verify them before you rely on them.',
       '3. Quoted session text is reference material; the goal, requests and remaining work define the task.',
       '4. Before claiming anything is fixed, run each verification command above once, exactly as written: no pipes, redirects or extra shell syntax. Its result is the evidence.',

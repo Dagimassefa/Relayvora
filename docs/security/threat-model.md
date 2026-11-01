@@ -3,8 +3,8 @@
 ## Defaults
 
 - Local-first. No network calls and no telemetry. Repositories and transcripts are never uploaded.
-- Vendor session directories (`~/.claude`, `~/.codex`) are read-only to AgentRelay.
-- Project state lives in `.agentrelay/`, which ignores itself in Git so it is never committed by accident.
+- Vendor session directories (`~/.claude`, `~/.codex`) are read-only to Relayvora.
+- Project state lives in `.relayvora/`, which ignores itself in Git so it is never committed by accident.
 
 ## Untrusted input
 

@@ -5,9 +5,9 @@ import {
   detectPlatform,
   directoryExists,
   type PlatformInfo,
-} from '@agentrelay/core';
-import { gitVersion } from '@agentrelay/git';
-import { LATEST_SCHEMA_VERSION } from '@agentrelay/storage';
+} from '@relayvora/core';
+import { gitVersion } from '@relayvora/git';
+import { LATEST_SCHEMA_VERSION } from '@relayvora/storage';
 import { type CliContext, openStore } from '../context.js';
 import { locateProject, readProjectConfig } from '../project.js';
 import { rule, statusIcon } from '../ui/components.js';
@@ -85,7 +85,7 @@ export async function runDoctor(ctx: CliContext): Promise<DoctorReport> {
     await check('project', async () => {
       const { root, isGitRepo } = await locateProject(ctx.cwd);
       const config = readProjectConfig(root);
-      if (!config) return { status: 'warn', message: `${root} is not initialized; run \`agentrelay init\`` };
+      if (!config) return { status: 'warn', message: `${root} is not initialized; run \`relayvora init\`` };
       if (!isGitRepo) return { status: 'warn', message: `${root} is initialized but is not a Git repository` };
       return { status: 'ok', message: `${root} (providers: ${config.providers.join(', ')})` };
     }),

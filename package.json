@@ -1,5 +1,5 @@
 {
-  "name": "agentrelay-monorepo",
+  "name": "relayvora-monorepo",
   "version": "0.0.0",
   "private": true,
   "description": "Local-first continuity and token-efficiency layer for AI coding agents",
@@ -14,7 +14,7 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
-    "agentrelay": "node apps/cli/dist/bin.js",
+    "relayvora": "node apps/cli/dist/bin.js",
     "release:pack": "pnpm build && node scripts/package-release.mjs",
     "release:smoke": "node scripts/smoke-release.mjs",
     "bench:plan": "node packages/benchmarks/run.mjs --dry-run"

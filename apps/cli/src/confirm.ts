@@ -1,5 +1,5 @@
 import readline from 'node:readline/promises';
-import { AgentRelayError, ExitCode } from '@agentrelay/core';
+import { RelayvoraError, ExitCode } from '@relayvora/core';
 
 export interface ConfirmOptions {
   /** Pre-approved via a documented non-interactive flag such as --yes. */
@@ -16,12 +16,12 @@ export async function confirmOrAbort(question: string, options: ConfirmOptions =
   if (options.yes) return;
   const input = options.input ?? process.stdin;
   if (!input.isTTY) {
-    throw new AgentRelayError(`${question} Confirmation needed: re-run with --yes to proceed non-interactively.`, ExitCode.PreconditionFailed);
+    throw new RelayvoraError(`${question} Confirmation needed: re-run with --yes to proceed non-interactively.`, ExitCode.PreconditionFailed);
   }
   const rl = readline.createInterface({ input, output: options.output ?? process.stderr });
   try {
     const answer = await rl.question(`${question} [y/N] `);
-    if (!/^y(es)?$/i.test(answer.trim())) throw new AgentRelayError('Cancelled.', ExitCode.Cancelled);
+    if (!/^y(es)?$/i.test(answer.trim())) throw new RelayvoraError('Cancelled.', ExitCode.Cancelled);
   } finally {
     rl.close();
   }

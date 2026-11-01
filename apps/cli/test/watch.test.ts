@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCommand, type AgentAdapter, type SessionHealth } from '@agentrelay/core';
+import { runCommand, type AgentAdapter, type SessionHealth } from '@relayvora/core';
 import { runWatch } from '../src/commands/watch.js';
 import { createContext } from '../src/context.js';
 import { PLAIN } from '../src/ui/theme.js';
@@ -66,7 +66,7 @@ describe('watch', () => {
     const stop = new AbortController();
     const limited = { lastLimitAt: '2026-10-10T11:59:30Z', lastSuccessAt: '2026-10-10T11:59:00Z', limitMessage: 'session limit' };
     const adapter = scripted(project, [{}, limited, limited, { lastSuccessAt: '2026-10-10T11:59:50Z' }], stop);
-    const ctx = createContext({ cwd: project, env: { ...process.env, AGENTRELAY_HOME: path.join(home, 's') }, adapters: [adapter] });
+    const ctx = createContext({ cwd: project, env: { ...process.env, RELAYVORA_HOME: path.join(home, 's') }, adapters: [adapter] });
 
     const out: string[] = [];
     const events = await runWatch(ctx, PLAIN, { intervalSeconds: 0.01, json: true, signal: stop.signal, write: (s) => out.push(s), now: () => NOW });
@@ -76,7 +76,7 @@ describe('watch', () => {
       ['cleared', null],
     ]);
     expect(events[0]!.headline).toBe('Claude Code hit its usage limit 1m ago (session limit)');
-    expect(events[0]!.suggestion).toMatch(/^agentrelay handoff --session sess-123 --to /);
+    expect(events[0]!.suggestion).toMatch(/^relayvora handoff --session sess-123 --to /);
     expect(out.map((l) => JSON.parse(l).kind)).toEqual(['alert', 'cleared']);
   });
 
@@ -86,7 +86,7 @@ describe('watch', () => {
     fs.mkdirSync(project);
     await runCommand('git', ['init', '-q', project]);
     const adapter = scripted(project, [{ lastActivityAt: '2026-10-10T09:00:00Z' }], new AbortController());
-    const ctx = createContext({ cwd: project, env: { ...process.env, AGENTRELAY_HOME: path.join(home, 's') }, adapters: [adapter] });
+    const ctx = createContext({ cwd: project, env: { ...process.env, RELAYVORA_HOME: path.join(home, 's') }, adapters: [adapter] });
     const out: string[] = [];
     await runWatch(ctx, PLAIN, { intervalSeconds: 60, once: true, write: (s) => out.push(s), now: () => NOW });
     const text = out.join('');

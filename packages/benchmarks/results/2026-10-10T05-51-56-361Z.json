@@ -46,7 +46,7 @@
       "task": "large-inventory",
       "arm": "relay",
       "rep": 1,
-      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\agentrelay-bench\\2026-10-10T05-51-56-361Z\\large-inventory-relay-1",
+      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\relayvora-bench\\2026-10-10T05-51-56-361Z\\large-inventory-relay-1",
       "stepA": {
         "costUsd": 2.1097203999999996,
         "cumulativeCostUsd": 2.1097203999999996,
@@ -68,7 +68,7 @@
         "handoffTokens": 3066,
         "launchMode": "inline",
         "repoFresh": true,
-        "agentRelayMs": 2399
+        "relayvoraMs": 2399
       },
       "stepB": {
         "costUsd": 0.3083287,
@@ -96,7 +96,7 @@
       "task": "large-inventory",
       "arm": "normal",
       "rep": 1,
-      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\agentrelay-bench\\2026-10-10T05-51-56-361Z\\large-inventory-normal-1",
+      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\relayvora-bench\\2026-10-10T05-51-56-361Z\\large-inventory-normal-1",
       "stepA": {
         "costUsd": 2.0180957000000004,
         "cumulativeCostUsd": 2.0180957000000004,

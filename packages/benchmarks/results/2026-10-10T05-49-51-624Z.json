@@ -47,7 +47,7 @@
       "task": "small-calculator",
       "arm": "normal",
       "rep": 1,
-      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\agentrelay-bench\\2026-10-10T05-49-51-624Z\\small-calculator-normal-1",
+      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\relayvora-bench\\2026-10-10T05-49-51-624Z\\small-calculator-normal-1",
       "stepA": {
         "costUsd": 0.1483409,
         "inputTokens": 155072,
@@ -88,7 +88,7 @@
       "task": "small-calculator",
       "arm": "relay",
       "rep": 1,
-      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\agentrelay-bench\\2026-10-10T05-49-51-624Z\\small-calculator-relay-1",
+      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\relayvora-bench\\2026-10-10T05-49-51-624Z\\small-calculator-relay-1",
       "stepA": {
         "costUsd": 0.1376981,
         "inputTokens": 115276,
@@ -109,7 +109,7 @@
         "handoffTokens": 822,
         "launchMode": "inline",
         "repoFresh": true,
-        "agentRelayMs": 2281
+        "relayvoraMs": 2281
       },
       "stepB": {
         "costUsd": 0.2200584,
@@ -135,7 +135,7 @@
       "task": "small-calculator",
       "arm": "normal",
       "rep": 2,
-      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\agentrelay-bench\\2026-10-10T05-49-51-624Z\\small-calculator-normal-2",
+      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\relayvora-bench\\2026-10-10T05-49-51-624Z\\small-calculator-normal-2",
       "stepA": {
         "costUsd": 0.1344111,
         "inputTokens": 115094,
@@ -176,7 +176,7 @@
       "task": "small-calculator",
       "arm": "relay",
       "rep": 2,
-      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\agentrelay-bench\\2026-10-10T05-49-51-624Z\\small-calculator-relay-2",
+      "dir": "C:\\Users\\muluh\\AppData\\Local\\Temp\\relayvora-bench\\2026-10-10T05-49-51-624Z\\small-calculator-relay-2",
       "stepA": {
         "costUsd": 0.1593659,
         "inputTokens": 155326,
@@ -197,7 +197,7 @@
         "handoffTokens": 820,
         "launchMode": "inline",
         "repoFresh": true,
-        "agentRelayMs": 2306
+        "relayvoraMs": 2306
       },
       "stepB": {
         "costUsd": 0.22103530000000002,

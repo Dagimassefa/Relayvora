@@ -1,4 +1,4 @@
-import { isSensitivePath, sha256, type SessionCommit, type SessionCommits } from '@agentrelay/core';
+import { isSensitivePath, sha256, type SessionCommit, type SessionCommits } from '@relayvora/core';
 import { findRepoRoot, git } from './repo.js';
 import { splitPatches } from './snapshot.js';
 

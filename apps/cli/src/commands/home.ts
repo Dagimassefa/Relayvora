@@ -1,6 +1,6 @@
-import { AGENTRELAY_VERSION, type SessionSummary } from '@agentrelay/core';
-import { getRepoState } from '@agentrelay/git';
-import type { ActivityStats, CheckpointRow, MeasuredRelay } from '@agentrelay/storage';
+import { RELAYVORA_VERSION, type SessionSummary } from '@relayvora/core';
+import { getRepoState } from '@relayvora/git';
+import type { ActivityStats, CheckpointRow, MeasuredRelay } from '@relayvora/storage';
 import { type AgentRadar, relayRadar, renderRadar } from '../alerts.js';
 import { type CliContext, openStore } from '../context.js';
 import { locateProject, readProjectConfig } from '../project.js';
@@ -17,13 +17,13 @@ export interface HomeData {
   sessions: Array<{ provider: string; count: number; latest: SessionSummary | null }>;
   lastCheckpoint: CheckpointRow | null;
   stats: { project: ActivityStats | null; global: ActivityStats };
-  /** Relays where both sides' context per turn was measured (agentrelay report). */
+  /** Relays where both sides' context per turn was measured (relayvora report). */
   measured: MeasuredRelay[];
   /** Per agent: should its latest session be relayed now? */
   radar: AgentRadar[];
 }
 
-/** Everything the home screen shows. Read-only: running bare `agentrelay` never writes anything. */
+/** Everything the home screen shows. Read-only: running bare `relayvora` never writes anything. */
 export async function runHome(ctx: CliContext): Promise<HomeData> {
   const { root, isGitRepo } = await locateProject(ctx.cwd);
   const [git, sessions, radar] = await Promise.all([
@@ -61,7 +61,7 @@ export async function runHome(ctx: CliContext): Promise<HomeData> {
 /** Average context-per-turn change across measured relays, from the agents' own records. */
 function measuredLine(h: HomeData, t: Theme): string[] {
   const m = h.measured;
-  if (m.length === 0) return [`  ${t.dim('Measure a relay with')} ${t.bold('agentrelay report')} ${t.dim('after the next agent has worked on it.')}`];
+  if (m.length === 0) return [`  ${t.dim('Measure a relay with')} ${t.bold('relayvora report')} ${t.dim('after the next agent has worked on it.')}`];
   const avg = m.reduce((n, r) => n + (1 - r.receivingFirstContextTokens / r.sourceContextTokens), 0) / m.length;
   const pct = `${avg >= 0 ? '-' : '+'}${Math.abs(Math.round(avg * 100))}%`;
   return [
@@ -72,14 +72,14 @@ function measuredLine(h: HomeData, t: Theme): string[] {
 export function renderHome(h: HomeData, t: Theme = PLAIN): string {
   const sep = t.fg('gray', ` ${t.sym.dot} `);
   const w = Math.min(t.width, 78) - 2;
-  const out = [banner(t, AGENTRELAY_VERSION)];
+  const out = [banner(t, RELAYVORA_VERSION)];
 
   // Project
   const git = h.project.git;
   const gitText = git
     ? `${t.fg('violet', git.branch ?? 'detached HEAD')}${sep}${git.changedFiles ? t.fg('amber', `${git.changedFiles} changed`) : t.fg('lime', 'clean')}`
     : t.dim('not a Git repository');
-  const init = h.project.initialized ? `${statusIcon(t, 'ok')} ${t.dim('ready')}` : `${statusIcon(t, 'warn')} ${t.fg('amber', 'run agentrelay init')}`;
+  const init = h.project.initialized ? `${statusIcon(t, 'ok')} ${t.dim('ready')}` : `${statusIcon(t, 'warn')} ${t.fg('amber', 'run relayvora init')}`;
   out.push(`  ${label(t, 'PROJECT', 9)}${t.bold(t.fg('cyan', h.project.name))}${sep}${gitText}${sep}${init}`);
 
   // Sessions
@@ -132,18 +132,18 @@ export function renderHome(h: HomeData, t: Theme = PLAIN): string {
   // Quick moves
   out.push('', `  ${rule(t, 'QUICK MOVES', 'cyan', w)}`, '');
   const moves: Array<[string, string]> = [];
-  if (!h.project.initialized) moves.push(['agentrelay init', 'set up this project']);
+  if (!h.project.initialized) moves.push(['relayvora init', 'set up this project']);
   const busiest = h.sessions.filter((s) => s.count > 0).sort((a, b) => (b.latest?.updatedAt ?? '').localeCompare(a.latest?.updatedAt ?? ''))[0];
   const from = busiest?.provider ?? 'codex';
   const to = from === 'claude' ? 'codex' : 'claude';
   moves.push(
-    [`agentrelay handoff --from ${from} --to ${to} --verify auto`, 'relay the work'],
-    ['agentrelay sessions', 'browse sessions'],
-    ['agentrelay checkpoint list', 'past relays'],
-    ['agentrelay doctor', 'system check'],
+    [`relayvora handoff --from ${from} --to ${to} --verify auto`, 'relay the work'],
+    ['relayvora sessions', 'browse sessions'],
+    ['relayvora checkpoint list', 'past relays'],
+    ['relayvora doctor', 'system check'],
   );
   const cmdWidth = Math.max(...moves.map(([c]) => c.length));
   for (const [cmd, what] of moves) out.push(`  ${t.fg('cyan', t.sym.arrow)} ${t.bold(cmd.padEnd(cmdWidth))}  ${t.dim(what)}`);
-  out.push('', `  ${t.dim('agentrelay --help for everything')}`, '');
+  out.push('', `  ${t.dim('relayvora --help for everything')}`, '');
   return out.join('\n');
 }
