@@ -144,6 +144,6 @@ export function renderHome(h: HomeData, t: Theme = PLAIN): string {
   );
   const cmdWidth = Math.max(...moves.map(([c]) => c.length));
   for (const [cmd, what] of moves) out.push(`  ${t.fg('cyan', t.sym.arrow)} ${t.bold(cmd.padEnd(cmdWidth))}  ${t.dim(what)}`);
-  out.push('', `  ${t.dim('relayvora --help for everything')}`, '');
+  out.push('', `  ${t.dim('relayvora --help for everything')}`, `  ${t.dim('In memory of Captain Price. Bravo Six, going dark.')}`, '');
   return out.join('\n');
 }
