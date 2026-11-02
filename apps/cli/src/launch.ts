@@ -13,8 +13,8 @@ import { handoffPath } from './project.js';
  */
 export function pointerPrompt(cp: Checkpoint, handoffFile: string): string {
   const rel = path.relative(cp.project.root, handoffFile).split(path.sep).join('/');
-  const from = cp.source.provider === 'manual' ? 'a previous session' : `a ${cp.source.provider} session`;
-  return `Continue the task described in ${rel} (an Relayvora handoff from ${from}). Read that file first, verify its agent-reported and inferred claims, then carry on.`;
+  const from = cp.source.provider === 'manual' ? 'a previous session' : `an earlier ${cp.source.provider} session`;
+  return `Continue the task described in ${rel} (a Relayvora handoff from ${from}). Read that file first, verify its agent-reported and inferred claims, then carry on.`;
 }
 
 export interface Freshness {
@@ -70,7 +70,7 @@ export function launchPrompt(cp: Checkpoint, handoffFile: string, freshness: Fre
   const fresh = freshnessSentence(freshness);
   const rel = path.relative(cp.project.root, handoffFile).split(path.sep).join('/');
   const text = fs.readFileSync(handoffFile, 'utf8');
-  const from = cp.source.provider === 'manual' ? 'a previous session' : `a ${cp.source.provider} session`;
+  const from = cp.source.provider === 'manual' ? 'a previous session' : `an earlier ${cp.source.provider} session`;
   const intro = `You are continuing work from ${from}. The Relayvora handoff below (also saved at ${rel}) describes the task, what is done and what is left.`;
   const inline = `${[intro, fresh].filter(Boolean).join(' ')}\n\n${text}`;
   if (inlineAllowed && inline.length <= INLINE_LIMIT) return { prompt: inline, mode: 'inline' };

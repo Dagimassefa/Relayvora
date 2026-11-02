@@ -10,7 +10,7 @@ pnpm install --frozen-lockfile
 pnpm test
 pnpm release:pack
 pnpm release:smoke
-npm install -g ./release/relayvora-0.1.0-alpha.0.tgz
+npm install -g ./release/relayvora-0.1.0-alpha.1.tgz
 relayvora --version
 relayvora doctor
 ```
@@ -38,8 +38,8 @@ See [GitHub's attestation documentation](https://docs.github.com/en/actions/how-
 Verify a downloaded artifact against the actual hosting repository:
 
 ```sh
-gh attestation verify relayvora-0.1.0-alpha.0.tgz -R OWNER/REPOSITORY
-npm install -g ./relayvora-0.1.0-alpha.0.tgz
+gh attestation verify relayvora-0.1.0-alpha.1.tgz -R OWNER/REPOSITORY
+npm install -g ./relayvora-0.1.0-alpha.1.tgz
 ```
 
 This is a signed provenance attestation for the JavaScript package. No platform executable is produced.
@@ -50,10 +50,10 @@ Local packaging does not create a signature; the GitHub job does. SHA-256 sideca
 GitHub tarballs can be installed directly. Optional registry publication is a separate reviewed action:
 
 ```sh
-npm publish ./release/relayvora-0.1.0-alpha.0.tgz --tag latest
+npm publish ./release/relayvora-0.1.0-alpha.1.tgz --tag latest
 ```
 
-The publisher needs rights to the `@relayvora` scope. The generated package is MIT-licensed and includes `LICENSE`
+It publishes as `relayvora`, so the publisher must be an owner of that npm package. The generated package is MIT-licensed and includes `LICENSE`
 and the bundled dependency license notices. The workflow does not publish to npm automatically.
 
 ## Measurements

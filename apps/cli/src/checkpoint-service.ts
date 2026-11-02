@@ -175,7 +175,7 @@ export async function createCheckpoint(ctx: CliContext, options: CreateCheckpoin
             'Reading transcript',
             async () => {
               const digest = await adapter.readTranscript!(s.path);
-              sessionSha256 = await sha256File(s.path);
+              sessionSha256 = adapter.sessionSha256 ? await adapter.sessionSha256(s.path) : await sha256File(s.path);
               return digest;
             },
             (d) => ({

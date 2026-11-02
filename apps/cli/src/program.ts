@@ -21,7 +21,7 @@ import { renderHooksInstall, renderHooksStatus, runHooksInstall, runHooksStatus,
 import { handleHookEvent, logHookProblem, parseClaudeHook, parseCodexNotify, spawnHookWorker, type HookEvent } from './hooks.js';
 import { renderSessions, runSessions } from './commands/sessions.js';
 import { copyToClipboard } from './clipboard.js';
-import { type CliContext, createContext, selectAdapters } from './context.js';
+import { type CliContext, createContext, otherAgent, selectAdapters } from './context.js';
 import { executeLaunch, planLaunch } from './launch.js';
 import { emit } from './output.js';
 import { banner, label, providerChip, rule, statusIcon } from './ui/components.js';
@@ -170,7 +170,7 @@ async function launchWithUi(ctx: CliContext, cp: Checkpoint, target: string | nu
   const result = await executeLaunch(ctx, plan, flags.yes === undefined ? {} : { yes: flags.yes });
   const ok = result.exitCode === 0 || result.exitCode === null;
   process.stderr.write(
-    `\n  ${statusIcon(t, ok ? 'ok' : 'warn')} ${t.bold(`back from ${plan.displayName}`)} ${t.dim(`(exit ${result.exitCode ?? 'signal'})`)}  ${t.dim(`relay again: relayvora handoff --from ${plan.target} --to ${plan.target === 'claude' ? 'codex' : 'claude'}`)}\n\n`,
+    `\n  ${statusIcon(t, ok ? 'ok' : 'warn')} ${t.bold(`back from ${plan.displayName}`)} ${t.dim(`(exit ${result.exitCode ?? 'signal'})`)}  ${t.dim(`relay again: relayvora handoff --from ${plan.target} --to ${otherAgent(plan.target)}`)}\n\n`,
   );
 }
 

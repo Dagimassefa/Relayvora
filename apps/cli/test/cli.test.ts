@@ -61,7 +61,7 @@ describe('doctor', () => {
   it('reports per-check status and passes on a healthy setup', async () => {
     const report = await runDoctor(ctx());
     const ids = report.checks.map((c) => c.id);
-    expect(ids).toEqual(['node', 'platform', 'git', 'store', 'project', 'adapter:claude', 'adapter:codex']);
+    expect(ids).toEqual(['node', 'platform', 'git', 'store', 'project', 'adapter:claude', 'adapter:codex', 'adapter:opencode']);
     expect(report.checks.find((c) => c.id === 'project')?.status).toBe('warn');
     expect(report.ok).toBe(true);
   });

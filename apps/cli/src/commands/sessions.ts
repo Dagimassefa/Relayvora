@@ -1,5 +1,5 @@
 import type { SessionSummary } from '@relayvora/core';
-import { type CliContext, selectAdapters } from '../context.js';
+import { type CliContext, otherAgent, selectAdapters } from '../context.js';
 import { formatBytes } from '../output.js';
 import { locateProject } from '../project.js';
 import { providerChip, relativeTime, rule, shortId, table } from '../ui/components.js';
@@ -63,7 +63,7 @@ export function renderSessions(result: SessionsResult, verbose = false, t: Theme
     const first = sessions[0]!;
     out.push(
       '',
-      `  ${t.fg('cyan', t.sym.arrow)} ${t.dim('relay it:')} ${t.bold(`relayvora handoff --session ${shortId(first.id)} --to ${first.provider === 'claude' ? 'codex' : 'claude'}`)}`,
+      `  ${t.fg('cyan', t.sym.arrow)} ${t.dim('relay it:')} ${t.bold(`relayvora handoff --session ${shortId(first.id)} --to ${otherAgent(first.provider)}`)}`,
     );
   }
 

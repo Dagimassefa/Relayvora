@@ -1,6 +1,6 @@
 {
   "name": "@relayvora/cli",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "private": true,
   "description": "Relayvora command-line interface",
   "type": "module",
@@ -17,6 +17,7 @@
   "dependencies": {
     "@relayvora/adapter-claude": "workspace:*",
     "@relayvora/adapter-codex": "workspace:*",
+    "@relayvora/adapter-opencode": "workspace:*",
     "@relayvora/core": "workspace:*",
     "@relayvora/git": "workspace:*",
     "@relayvora/storage": "workspace:*",

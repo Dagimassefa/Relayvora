@@ -2,7 +2,7 @@ import { RELAYVORA_VERSION, type SessionSummary } from '@relayvora/core';
 import { getRepoState } from '@relayvora/git';
 import type { ActivityStats, CheckpointRow, MeasuredRelay } from '@relayvora/storage';
 import { type AgentRadar, relayRadar, renderRadar } from '../alerts.js';
-import { type CliContext, openStore } from '../context.js';
+import { type CliContext, openStore, otherAgent } from '../context.js';
 import { locateProject, readProjectConfig } from '../project.js';
 import { banner, compact, label, providerChip, providerName, relativeTime, rule, statusIcon } from '../ui/components.js';
 import { PLAIN, type Theme } from '../ui/theme.js';
@@ -135,7 +135,7 @@ export function renderHome(h: HomeData, t: Theme = PLAIN): string {
   if (!h.project.initialized) moves.push(['relayvora init', 'set up this project']);
   const busiest = h.sessions.filter((s) => s.count > 0).sort((a, b) => (b.latest?.updatedAt ?? '').localeCompare(a.latest?.updatedAt ?? ''))[0];
   const from = busiest?.provider ?? 'codex';
-  const to = from === 'claude' ? 'codex' : 'claude';
+  const to = otherAgent(from);
   moves.push(
     [`relayvora handoff --from ${from} --to ${to} --verify auto`, 'relay the work'],
     ['relayvora sessions', 'browse sessions'],

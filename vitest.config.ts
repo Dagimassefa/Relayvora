@@ -12,6 +12,7 @@ export default defineConfig({
       '@relayvora/git': src('packages/git'),
       '@relayvora/adapter-claude': src('packages/adapter-claude'),
       '@relayvora/adapter-codex': src('packages/adapter-codex'),
+      '@relayvora/adapter-opencode': src('packages/adapter-opencode'),
     },
   },
   test: {

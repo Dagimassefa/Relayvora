@@ -125,7 +125,7 @@ function buildItems(cp: Checkpoint, maxFileRows: number): ContextItem[] {
   const from =
     cp.source.provider === 'manual'
       ? 'from the repository and user input'
-      : `from a ${cp.source.provider} session${cp.source.sessionId ? ` (${cp.source.sessionId})` : ''}`;
+      : `from an earlier ${cp.source.provider} session${cp.source.sessionId ? ` (${cp.source.sessionId})` : ''}`;
   push(
     'header',
     'required',

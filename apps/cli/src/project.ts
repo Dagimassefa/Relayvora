@@ -11,7 +11,7 @@ export const HANDOFFS_DIR = 'handoffs';
 export const ProjectConfig = z.object({
   schemaVersion: z.literal(1),
   /** Providers this project hands work between. */
-  providers: z.array(z.string()).default(['claude', 'codex']),
+  providers: z.array(z.string()).default(['claude', 'codex', 'opencode']),
   /** Default token budget for generated handoffs (estimated tokens). */
   handoffBudgetTokens: z.number().int().positive().default(4000),
   /** Relayvora checkpoint retention in days; null keeps everything. Vendor transcripts are never deleted. */

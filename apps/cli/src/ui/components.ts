@@ -98,7 +98,7 @@ export function chip(t: Theme, text: string, color: ColorName): string {
   return t.level === 0 ? `[${text}]` : t.bold(t.bg(color, ` ${text} `));
 }
 
-const PROVIDER_COLORS: Record<string, ColorName> = { claude: 'orange', codex: 'cyan', manual: 'violet' };
+const PROVIDER_COLORS: Record<string, ColorName> = { claude: 'orange', codex: 'cyan', opencode: 'white', manual: 'violet' };
 
 export function providerChip(t: Theme, provider: string): string {
   return chip(t, provider.toUpperCase(), PROVIDER_COLORS[provider] ?? 'blue');

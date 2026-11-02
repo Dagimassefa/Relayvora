@@ -1,5 +1,6 @@
 import { claudeAdapter } from '@relayvora/adapter-claude';
 import { codexAdapter } from '@relayvora/adapter-codex';
+import { opencodeAdapter } from '@relayvora/adapter-opencode';
 import { RelayvoraError, ExitCode, canonicalPath, dataDir, type AgentAdapter } from '@relayvora/core';
 import { Store } from '@relayvora/storage';
 
@@ -10,7 +11,7 @@ export interface CliContext {
   adapters: readonly AgentAdapter[];
 }
 
-export const BUILTIN_ADAPTERS: readonly AgentAdapter[] = [claudeAdapter, codexAdapter];
+export const BUILTIN_ADAPTERS: readonly AgentAdapter[] = [claudeAdapter, codexAdapter, opencodeAdapter];
 
 export function createContext(overrides: Partial<CliContext> = {}): CliContext {
   const env = overrides.env ?? process.env;
@@ -30,6 +31,11 @@ export function selectAdapters(ctx: CliContext, provider?: string): readonly Age
     throw new RelayvoraError(`Unknown provider "${provider}". Supported: ${known}`, ExitCode.Usage);
   }
   return [adapter];
+}
+
+/** The agent suggested as the receiver when work leaves `provider`. */
+export function otherAgent(provider: string): string {
+  return provider === 'claude' ? 'codex' : 'claude';
 }
 
 export function openStore(ctx: CliContext): Store {

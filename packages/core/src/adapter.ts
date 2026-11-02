@@ -21,6 +21,11 @@ export interface AgentAdapter {
   /** Extracts prompts, the last agent message and usage from a session file. Read-only. */
   readTranscript?(sessionPath: string): Promise<TranscriptDigest>;
   /**
+   * SHA-256 of the session's recorded content, for adapters whose session path is not a plain file
+   * (e.g. a row in a database). Absent: the file at the session path is hashed.
+   */
+  sessionSha256?(sessionPath: string): Promise<string>;
+  /**
    * Arguments that start an interactive session with `prompt` as the first message, using the
    * agent's documented command-line interface. Absent when launching is unsupported.
    */

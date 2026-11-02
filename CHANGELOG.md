@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-alpha.1
+
+- OpenCode support: sessions, prompts, the last agent report, per-call context, usage, cost, rate limits and
+  compactions are read from OpenCode's SQLite database (read-only), and `--to opencode` launches `opencode --prompt`.
+
 ## 0.1.0-alpha.0
 
 - Local Claude Code/Codex session discovery and evidence-backed handoffs, including editor-extension sessions.

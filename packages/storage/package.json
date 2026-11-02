@@ -1,6 +1,6 @@
 {
   "name": "@relayvora/storage",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "private": true,
   "description": "Relayvora local SQLite store (node:sqlite) with versioned migrations",
   "type": "module",

@@ -11,6 +11,7 @@
     { "path": "../../packages/storage" },
     { "path": "../../packages/git" },
     { "path": "../../packages/adapter-claude" },
-    { "path": "../../packages/adapter-codex" }
+    { "path": "../../packages/adapter-codex" },
+    { "path": "../../packages/adapter-opencode" }
   ]
 }

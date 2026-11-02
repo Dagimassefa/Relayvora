@@ -29,6 +29,9 @@ importers:
       '@relayvora/adapter-codex':
         specifier: workspace:*
         version: link:../../packages/adapter-codex
+      '@relayvora/adapter-opencode':
+        specifier: workspace:*
+        version: link:../../packages/adapter-opencode
       '@relayvora/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -52,6 +55,12 @@ importers:
         version: link:../core
 
   packages/adapter-codex:
+    dependencies:
+      '@relayvora/core':
+        specifier: workspace:*
+        version: link:../core
+
+  packages/adapter-opencode:
     dependencies:
       '@relayvora/core':
         specifier: workspace:*
