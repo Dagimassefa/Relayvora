@@ -11,6 +11,8 @@ with a short, verified handoff instead of a 200k-token transcript.
 
 _In memory of Captain John Price. "Bravo Six, going dark."_
 
+<img src="docs/demo.gif" alt="relayvora handoff saves the half-finished fix and its failing test; Codex picks up the handoff, finishes the fix and the test passes" width="760">
+
 </div>
 
 ---
