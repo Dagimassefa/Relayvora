@@ -3,15 +3,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { asRecord } from '@relayvora/core';
 import { createCheckpoint } from './checkpoint-service.js';
-import { type CliContext, createContext, openStore } from './context.js';
+import { type CliContext, createContext, openStore, otherAgent } from './context.js';
 import { cliEntryPoint } from './hooks-install.js';
 import { removeCheckpoint } from './retention.js';
 
 export type HookTrigger = 'pre-compact' | 'session-end' | 'turn' | 'limit';
 
-/** An agent event, normalised from Claude Code hook input or a Codex notify payload. */
+export type HookAgent = 'claude' | 'codex' | 'opencode';
+
+/** An agent event, normalised from Claude Code hook input, a Codex notify payload or the OpenCode plugin. */
 export interface HookEvent {
-  agent: 'claude' | 'codex';
+  agent: HookAgent;
   trigger: HookTrigger;
   sessionId: string;
   cwd: string;
@@ -82,6 +84,32 @@ export function parseCodexNotify(arg: string): HookEvent | null {
   return sessionId && cwd ? { agent: 'codex', trigger: 'turn', sessionId, cwd } : null;
 }
 
+const LIMIT_TEXT = /usage limit|rate.?limit|quota|too many requests|\b429\b|hit your .*limit/i;
+
+/**
+ * Relayvora's OpenCode plugin passes one JSON argument per session event:
+ * { type, sessionID, directory, error }. `session.idle` ends a turn, `session.compacted` follows a
+ * compaction, and `session.error` counts only when the error is a usage or rate limit.
+ */
+export function parseOpenCodeEvent(arg: string): HookEvent | null {
+  let data: Record<string, unknown> | undefined;
+  try {
+    data = asRecord(JSON.parse(arg));
+  } catch {
+    return null;
+  }
+  const sessionId = str(data?.sessionID);
+  const cwd = str(data?.directory);
+  if (!sessionId || !cwd) return null;
+  const error = str(data?.error);
+  const trigger: HookTrigger | null =
+    data?.type === 'session.idle' ? 'turn'
+    : data?.type === 'session.compacted' ? 'pre-compact'
+    : data?.type === 'session.error' && error && LIMIT_TEXT.test(error) ? 'limit'
+    : null;
+  return trigger ? { agent: 'opencode', trigger, sessionId, cwd } : null;
+}
+
 export interface HookResult {
   action: 'created' | 'skipped';
   reason: string;
@@ -113,7 +141,7 @@ export async function handleHookEvent(base: CliContext, event: HookEvent, option
   fs.mkdirSync(path.dirname(marker), { recursive: true });
   fs.writeFileSync(marker, new Date().toISOString());
 
-  const other = event.agent === 'claude' ? 'codex' : 'claude';
+  const other = otherAgent(event.agent);
   const result = await createCheckpoint(ctx, {
     session: event.sessionId,
     from: event.agent,

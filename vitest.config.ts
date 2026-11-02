@@ -18,5 +18,7 @@ export default defineConfig({
   test: {
     include: ['packages/*/test/**/*.test.ts', 'apps/*/test/**/*.test.ts'],
     testTimeout: 30_000,
+    // Tests never reach the npm registry; update-check tests inject their own fetch.
+    env: { RELAYVORA_NO_UPDATE_CHECK: '1' },
   },
 });

@@ -1,6 +1,6 @@
 {
   "name": "@relayvora/core",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "private": true,
   "description": "Relayvora core: checkpoint schema, redaction, budgeting, platform and process utilities",
   "type": "module",

@@ -24,6 +24,9 @@ await run('npm', ['install', '--prefix', install, '--cache', path.join(tmp, 'npm
 const bin = path.join(install, 'node_modules', 'relayvora', 'dist', 'bin.js');
 const cli = (...args) => run(process.execPath, [bin, ...args]);
 if ((await cli('--version')).trim() !== manifest.version) throw new Error('Installed version mismatch');
+// The bundle must keep node:sqlite's ExperimentalWarning out of stderr (it loads a store on every command).
+const quiet = await runCommand(process.execPath, [bin, '--json', 'config', 'show'], { cwd: project, env, timeoutMs: 120_000 });
+if (/ExperimentalWarning/.test(quiet.stderr)) throw new Error(`Bundled CLI printed a warning: ${quiet.stderr.trim()}`);
 await run('git', ['init', '-q']);
 await cli('init');
 const cp = JSON.parse(await cli('--json', 'checkpoint', 'create', '--goal', 'Release smoke task', '--no-transcript'));

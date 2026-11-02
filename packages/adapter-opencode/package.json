@@ -1,6 +1,6 @@
 {
   "name": "@relayvora/adapter-opencode",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "private": true,
   "description": "Relayvora adapter for OpenCode",
   "type": "module",

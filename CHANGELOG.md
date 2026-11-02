@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-alpha.2
+
+- Automatic checkpoints for OpenCode: `relayvora hooks install` adds a plugin that saves a checkpoint when a turn
+  fails on a usage or rate limit, after compaction, and at the end of turns (throttled).
+- The home screen shows when a newer version is on npm (checked at most once a day; `RELAYVORA_NO_UPDATE_CHECK=1`
+  turns it off).
+- The npm build no longer prints Node's `ExperimentalWarning` about SQLite on every command.
+
 ## 0.1.0-alpha.1
 
 - OpenCode support: sessions, prompts, the last agent report, per-call context, usage, cost, rate limits and

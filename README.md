@@ -148,10 +148,8 @@ Global flags: `--json` (machine-readable), `-C/--cwd <dir>`, `-v/--verbose`, `--
 ### Automatic checkpoints (hooks)
 
 ```sh
-relayvora hooks install            # Claude Code (this project) + Codex; --scope user for all projects; --dry-run to preview
+relayvora hooks install            # Claude Code + OpenCode (this project) + Codex; --scope user for all projects; --dry-run to preview
 ```
-
-OpenCode has no hooks yet: relay from it with `relayvora handoff --from opencode`.
 
 The handoff is then waiting before you need it. Claude Code runs Relayvora on:
 
@@ -162,14 +160,17 @@ The handoff is then waiting before you need it. Claude Code runs Relayvora on:
 | `SessionEnd`                 | the session ends                             | always                           |
 | `Stop`                       | the end of a turn                            | at most every 15 min (`--every`) |
 
-Codex runs it through its `notify` setting at the end of each turn (throttled the same way). Hooks hand the work to a
+Codex runs it through its `notify` setting at the end of each turn (throttled the same way). OpenCode gets a small
+plugin, `.opencode/plugins/relayvora.js` (or `~/.config/opencode/plugins/` with `--scope user`), that checkpoints
+on `session.error` when it is a usage or rate limit, on `session.compacted`, and on `session.idle` at the end of a
+turn (throttled). Hooks hand the work to a
 background process and return in well under a second, so they never slow the agent; problems go to `hooks.log` in the
 data directory. The newest 5 automatic checkpoints per session are kept (`--keep`). When the relay radar or `watch`
 flags a limit and a hook already saved the latest state, the suggested command is simply `relayvora launch <id>`.
 
 The installer merges into existing settings and leaves other hooks untouched, writes Claude Code hooks in exec form (no
-shell, works on Windows), keeps `.claude/settings.local.json` out of Git, and never replaces an existing Codex
-`notify` program. Claude Code runs hooks only in folders you have accepted in its workspace trust prompt.
+shell, works on Windows), keeps `.claude/settings.local.json` and the OpenCode plugin out of Git, never replaces an
+existing Codex `notify` program, and never overwrites an OpenCode plugin file it did not write. Claude Code runs hooks only in folders you have accepted in its workspace trust prompt.
 
 ### Handoff and checkpoint options
 
@@ -251,7 +252,9 @@ Cleanup removes Relayvora's checkpoint, handoff file, evidence and usage records
 and audit events are kept. Automatic hook checkpoints also obey their per-session `--keep` limit.
 Retention is age-based, so it also removes edited handoff files once their checkpoint expires; export anything you want to keep.
 
-- **Local only.** Nothing is uploaded and there is no telemetry.
+- **Local only.** Nothing is uploaded and there is no telemetry. The one network request: at most once a day the home
+  screen asks the npm registry for the latest version, to show an update notice. It sends nothing about you or your
+  projects; turn it off with `RELAYVORA_NO_UPDATE_CHECK=1` (it is also skipped when `CI` is set).
 - **Global store:** SQLite at `%LOCALAPPDATA%\relayvora` (Windows), `~/Library/Application Support/relayvora`
   (macOS), `$XDG_DATA_HOME/relayvora` or `~/.local/share/relayvora` (Linux). Override with `RELAYVORA_HOME`.
 - **Per project:** `.relayvora/` (config and handoff files), ignored by Git through its own `.gitignore`.
@@ -297,7 +300,7 @@ CI runs the build, the tests and a CLI smoke test on Windows, macOS and Linux wi
 - [x] Launching: `handoff --confirm` and `launch`, via the CLI or the editor-extension copy, with a freshness check
 - [x] Measurement: `report`, onboarding and payback, home-screen stats
 - [x] Benchmark harness with small and large tasks and hidden-test scoring
-- [x] Relay radar, `watch`, and automatic checkpoints from Claude Code hooks and Codex notify
+- [x] Relay radar, `watch`, and automatic checkpoints from Claude Code hooks, Codex notify and an OpenCode plugin
 - [x] Retention enforcement and confirmed delete/prune commands with previews
 - [x] Cold-resume benchmark support, Claude/Codex arms, three tasks and configurable repetitions
 - [x] OpenCode support: sessions, transcripts, usage and limits from its database, and launching

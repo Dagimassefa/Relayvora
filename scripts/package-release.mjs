@@ -15,7 +15,10 @@ if (process.env.GITHUB_REF_TYPE === 'tag' && process.env.GITHUB_REF_NAME !== `v$
 
 await build({
   entryPoints: [path.join(root, 'apps/cli/src/bin.ts')],
-  outfile: path.join(stage, 'dist/bin.js'),
+  // Splitting keeps bin.ts's dynamic import as its own chunk: in a single file, the hoisted node:sqlite
+  // import would load before bin.ts installs its ExperimentalWarning filter. Chunks sit next to bin.js,
+  // which hooks-install locates relative to its own module.
+  outdir: path.join(stage, 'dist'), splitting: true, chunkNames: '[name]-[hash]',
   bundle: true, platform: 'node', format: 'esm', target: 'node22.13',
   banner: { js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);" },
   sourcemap: false, legalComments: 'linked',

@@ -6,6 +6,7 @@ import { type CliContext, openStore, otherAgent } from '../context.js';
 import { locateProject, readProjectConfig } from '../project.js';
 import { banner, compact, label, providerChip, providerName, relativeTime, rule, statusIcon } from '../ui/components.js';
 import { PLAIN, type Theme } from '../ui/theme.js';
+import { type UpdateInfo, checkForUpdate } from '../update-check.js';
 
 export interface HomeData {
   project: {
@@ -21,12 +22,17 @@ export interface HomeData {
   measured: MeasuredRelay[];
   /** Per agent: should its latest session be relayed now? */
   radar: AgentRadar[];
+  /** A newer published version, when the daily check found one. */
+  update: UpdateInfo | null;
 }
 
-/** Everything the home screen shows. Read-only: running bare `relayvora` never writes anything. */
+/**
+ * Everything the home screen shows. Read-only for projects and agents: the only write is the daily
+ * update-check cache in the data directory.
+ */
 export async function runHome(ctx: CliContext): Promise<HomeData> {
   const { root, isGitRepo } = await locateProject(ctx.cwd);
-  const [git, sessions, radar] = await Promise.all([
+  const [git, sessions, radar, update] = await Promise.all([
     isGitRepo ? getRepoState(root).catch(() => null) : Promise.resolve(null),
     Promise.all(
       ctx.adapters.map(async (adapter) => {
@@ -35,6 +41,7 @@ export async function runHome(ctx: CliContext): Promise<HomeData> {
       }),
     ),
     relayRadar(ctx, root).catch(() => [] as AgentRadar[]),
+    checkForUpdate(ctx.dataDir, ctx.env).catch(() => null),
   ]);
 
   const store = openStore(ctx);
@@ -52,6 +59,7 @@ export async function runHome(ctx: CliContext): Promise<HomeData> {
       stats: { project: project ? store.activityStats(project.id) : null, global: store.activityStats() },
       measured: store.measuredRelays(),
       radar,
+      update,
     };
   } finally {
     store.close();
@@ -73,6 +81,12 @@ export function renderHome(h: HomeData, t: Theme = PLAIN): string {
   const sep = t.fg('gray', ` ${t.sym.dot} `);
   const w = Math.min(t.width, 78) - 2;
   const out = [banner(t, RELAYVORA_VERSION)];
+  if (h.update) {
+    out.push(
+      `  ${t.fg('amber', t.sym.arrow)} ${t.bold(t.fg('amber', `relayvora ${h.update.latest} is available`))} ${t.dim(`(you have ${h.update.current})`)}  ${t.bold('npm install -g relayvora@latest')}`,
+      '',
+    );
+  }
 
   // Project
   const git = h.project.git;

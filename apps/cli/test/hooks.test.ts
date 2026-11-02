@@ -9,10 +9,14 @@ import {
   codexNotifyStatus,
   installClaudeHooks,
   installCodexNotify,
+  installOpenCodePlugin,
+  openCodePluginFile,
+  openCodePluginStatus,
   uninstallClaudeHooks,
   uninstallCodexNotify,
+  uninstallOpenCodePlugin,
 } from '../src/hooks-install.js';
-import { handleHookEvent, parseClaudeHook, parseCodexNotify } from '../src/hooks.js';
+import { handleHookEvent, parseClaudeHook, parseCodexNotify, parseOpenCodeEvent } from '../src/hooks.js';
 
 const OPTIONS = { everyMinutes: 15, keep: 2, verify: false };
 const tmp = (name: string) => fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), name)));
@@ -38,6 +42,18 @@ describe('hook event parsing', () => {
     const payload = { type: 'agent-turn-complete', 'thread-id': 't1', 'turn-id': 'u1', cwd: '/p', 'input-messages': [], 'last-assistant-message': 'ok' };
     expect(parseCodexNotify(JSON.stringify(payload))).toEqual({ agent: 'codex', trigger: 'turn', sessionId: 't1', cwd: '/p' });
     expect(parseCodexNotify(JSON.stringify({ ...payload, type: 'other' }))).toBeNull();
+  });
+
+  it('maps OpenCode plugin events, counting only limit errors', () => {
+    const opencode = (o: object) => parseOpenCodeEvent(JSON.stringify({ sessionID: 'ses_1', directory: '/p', error: null, ...o }));
+    expect(opencode({ type: 'session.idle' })).toEqual({ agent: 'opencode', trigger: 'turn', sessionId: 'ses_1', cwd: '/p' });
+    expect(opencode({ type: 'session.compacted' })?.trigger).toBe('pre-compact');
+    const limit = JSON.stringify({ name: 'APIError', data: { message: 'Rate limit reached for requests', statusCode: 429 } });
+    expect(opencode({ type: 'session.error', error: limit })?.trigger).toBe('limit');
+    expect(opencode({ type: 'session.error', error: JSON.stringify({ name: 'MessageAbortedError' }) })).toBeNull();
+    expect(opencode({ type: 'session.updated' })).toBeNull();
+    expect(opencode({ type: 'session.idle', sessionID: '' })).toBeNull();
+    expect(parseOpenCodeEvent('not json')).toBeNull();
   });
 });
 
@@ -94,6 +110,36 @@ describe('Codex notify installation', () => {
     expect(plan.warnings[0]).toMatch(/already has a notify program/);
     expect(fs.readFileSync(file, 'utf8')).toBe('notify = ["python3", "/home/me/notify.py"]\n');
     expect(uninstallCodexNotify(file, true)).toBe(false);
+  });
+});
+
+describe('OpenCode plugin installation', () => {
+  it('writes a plugin in the project or user plugins folder, and removes only its own file', () => {
+    const root = tmp('ar opencode ');
+    const file = openCodePluginFile('local', root);
+    expect(file).toBe(path.join(root, '.opencode', 'plugins', 'relayvora.js'));
+    expect(openCodePluginFile('user', root, { XDG_CONFIG_HOME: '/cfg' })).toBe(path.join(path.resolve('/cfg'), 'opencode', 'plugins', 'relayvora.js'));
+
+    expect(installOpenCodePlugin(file, OPTIONS, false).changes).toHaveLength(3);
+    expect(fs.existsSync(file)).toBe(false);
+    installOpenCodePlugin(file, OPTIONS, true);
+    const source = fs.readFileSync(file, 'utf8');
+    expect(openCodePluginStatus(file)).toBe('ours');
+    expect(source).toContain(JSON.stringify(process.execPath));
+    expect(source).toContain('"--keep","2"');
+    expect(source).toContain("'hook', 'opencode', payload");
+
+    expect(uninstallOpenCodePlugin(file, true)).toBe(true);
+    expect(fs.existsSync(file)).toBe(false);
+  });
+
+  it("never overwrites someone else's plugin with the same name", () => {
+    const file = openCodePluginFile('local', tmp('ar opencode '));
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, 'export const Mine = async () => ({});\n');
+    expect(installOpenCodePlugin(file, OPTIONS, true).warnings[0]).toMatch(/not written by Relayvora/);
+    expect(uninstallOpenCodePlugin(file, true)).toBe(false);
+    expect(fs.readFileSync(file, 'utf8')).toBe('export const Mine = async () => ({});\n');
   });
 });
 

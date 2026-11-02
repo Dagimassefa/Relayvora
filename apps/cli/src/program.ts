@@ -18,7 +18,7 @@ import { renderInit, runInit } from './commands/init.js';
 import { renderReport, runReport } from './commands/report.js';
 import { runWatch } from './commands/watch.js';
 import { renderHooksInstall, renderHooksStatus, runHooksInstall, runHooksStatus, runHooksUninstall, type HooksFlags } from './commands/hooks.js';
-import { handleHookEvent, logHookProblem, parseClaudeHook, parseCodexNotify, spawnHookWorker, type HookEvent } from './hooks.js';
+import { handleHookEvent, logHookProblem, parseClaudeHook, parseCodexNotify, parseOpenCodeEvent, spawnHookWorker, type HookEvent } from './hooks.js';
 import { renderSessions, runSessions } from './commands/sessions.js';
 import { copyToClipboard } from './clipboard.js';
 import { type CliContext, createContext, otherAgent, selectAdapters } from './context.js';
@@ -428,8 +428,8 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
   const hooks = program.command('hooks').description('save checkpoints automatically from agent hooks (limit hit, compaction, session end, turns)');
   const hookOptions = (cmd: Command) =>
     cmd
-      .addOption(new Option('--agent <agent>', 'which agent').choices(['claude', 'codex', 'all']).default('all'))
-      .addOption(new Option('--scope <scope>', 'Claude Code settings: this project (local, not committed) or your user').choices(['local', 'user']).default('local'))
+      .addOption(new Option('--agent <agent>', 'which agent').choices(['claude', 'codex', 'opencode', 'all']).default('all'))
+      .addOption(new Option('--scope <scope>', 'Claude Code and OpenCode: this project (local, not committed) or your user').choices(['local', 'user']).default('local'))
       .option('--dry-run', 'show what would change without writing');
   hookOptions(hooks.command('install').description('install the hooks'))
     .option('--every <minutes>', 'minimum minutes between end-of-turn checkpoints', parsePositiveInt, 15)
@@ -461,7 +461,11 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
     .action(async (agent: string, payload: string | undefined, flags: { every: number; keep: number; verify?: boolean }, cmd: Command) => {
       const { ctx } = ctxFor(cmd);
       try {
-        const event = agent === 'claude' ? parseClaudeHook(await readStdin()) : agent === 'codex' ? parseCodexNotify(payload ?? '') : null;
+        const event =
+          agent === 'claude' ? parseClaudeHook(await readStdin())
+          : agent === 'codex' ? parseCodexNotify(payload ?? '')
+          : agent === 'opencode' ? parseOpenCodeEvent(payload ?? '')
+          : null;
         if (event) spawnHookWorker(event, { everyMinutes: flags.every, keep: flags.keep, verify: Boolean(flags.verify) });
       } catch (error) {
         logHookProblem(ctx.dataDir, `hook ${agent}: ${(error as Error).message}`);

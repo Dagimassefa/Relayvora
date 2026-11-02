@@ -1,6 +1,6 @@
 {
   "name": "@relayvora/git",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "private": true,
   "description": "Relayvora Git evidence collection (read-only)",
   "type": "module",
