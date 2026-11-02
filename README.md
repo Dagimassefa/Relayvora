@@ -25,6 +25,8 @@ every call costs a fortune. Normally you'd open a new agent and spend twenty min
 - **Labels every fact:** `[observed]`, `[user]`, `[agent-reported]` or `[inferred]`, so the next agent knows what's
   verified and what's hearsay.
 - **Launches the next agent** with the handoff loaded, in your terminal or your editor.
+- **Follows you and your team:** pick up on another device, or send the handoff to a teammate's inbox, through
+  the Git repository you already share. No extra account.
 
 ```sh
 relayvora handoff --from codex --to claude --verify auto --confirm
@@ -32,7 +34,7 @@ relayvora handoff --from codex --to claude --verify auto --confirm
 
 One command. New agent, full briefing, back in the fight.
 
-> **Status: pre-alpha.** Works end to end on Windows, macOS and Linux with the Claude Code, Codex and OpenCode CLIs, or the
+> **Status: alpha.** Works end to end on Windows, macOS and Linux with the Claude Code, Codex and OpenCode CLIs, or the
 > Claude Code and Codex VS Code / Cursor extensions. Measured honestly: it saves **tokens and context** on large sessions, **not money on
 > small ones**. See [Does it save anything?](#does-it-save-anything).
 
@@ -52,16 +54,7 @@ Tarballs with a SHA-256 file and a signed build attestation are also on the
 
 ## Quick start
 
-To build from source instead, you also need pnpm 10:
-
-```sh
-pnpm install
-pnpm build
-cd apps/cli && npm link        # global `relayvora` command; `pnpm build` picks up later changes
-relayvora doctor              # checks Node, Git, the store, and finds Claude Code / Codex / OpenCode
-```
-
-Then, in any project where you have used Claude Code, Codex or OpenCode:
+In any project where you have used Claude Code, Codex or OpenCode:
 
 ```sh
 relayvora                                                        # home screen
@@ -69,8 +62,10 @@ relayvora handoff --from codex --to claude --verify auto --confirm
 ```
 
 That finds your latest Codex session for the project, runs the project's own checks, builds the handoff, shows a
-summary card, and (after you confirm) starts Claude Code in this terminal with the handoff loaded. Remove the global
-command with `npm unlink -g @relayvora/cli`.
+summary card, and (after you confirm) starts Claude Code in this terminal with the handoff loaded.
+
+Hit limits often? `relayvora hooks install` saves a checkpoint automatically when it happens, so the handoff is ready
+before you need it.
 
 ## How a relay works
 
@@ -116,7 +111,7 @@ Relayvora works this out for you from each agent's own session records, and show
 | Usage limit hit         | Claude Code: `rate_limit` API error ("You've hit your session limit · resets ..."); Codex: limit error or `rate_limit_reached_type`; OpenCode: a rate-limit (429) error from the provider | relay now                                               |
 | Near a limit            | Codex reports used % of its 5-hour and weekly windows; 90% or more                                                                                                                        | relay soon                                              |
 | Large session gone cold | Idle over an hour (Claude Code caches for 1 hour, measured) and 60k+ tokens per call                                                                                                      | relay: continuing re-processes everything at full price |
-| Compacted               | Claude Code summarised the conversation because it grew too large                                                                                                                         | relay                                                   |
+| Compacted               | Claude Code or OpenCode summarised the conversation because it grew too large                                                                                                                       | relay                                                   |
 | Small, warm session     | Under ~60k tokens per call, recently active                                                                                                                                               | continue                                                |
 
 ```sh
@@ -335,7 +330,12 @@ docs/                      architecture and security notes
 
 ## Development
 
+To build from source you also need pnpm 10:
+
 ```sh
+pnpm install
+pnpm build
+cd apps/cli && npm link   # global `relayvora` from source; `npm unlink -g @relayvora/cli` removes it
 pnpm test        # vitest against source, no build needed
 pnpm build       # tsc -b with project references
 pnpm bench:plan  # preview benchmark jobs without agent calls
@@ -361,7 +361,10 @@ CI runs the build, the tests and a CLI smoke test on Windows, macOS and Linux wi
 - [x] Cross-machine handoffs: `export` and `import`, optionally carrying uncommitted work
 - [x] Sharing through the repository: `sync` across your devices, `send` and `inbox` between people
 - [ ] Run the expanded live benchmark matrix and publish its measurements (consumes agent usage)
-- [ ] Publish the first release after the GitHub workflow validates and signs it; see [release instructions](docs/releasing.md)
+- [x] Published on npm as `relayvora`
+- [ ] Signed GitHub releases from the release workflow (needs a public repository); see [release instructions](docs/releasing.md)
+- [ ] MCP server, so any MCP-capable agent can fetch handoffs and check the inbox
+- [ ] More agents: Gemini CLI, Cursor CLI
 - [ ] **Version two:** dedicated VS Code extension
 
 ## License

@@ -60,7 +60,7 @@ const collect = (value: string, previous: string[] = []) => [...previous, value]
 /** Task and evidence options shared by `checkpoint create` and `handoff`. */
 function addCheckpointOptions(cmd: Command): Command {
   return cmd
-    .option('--from <provider>', 'use the latest session of this provider for this project (claude, codex)')
+    .option('--from <provider>', 'use the latest session of this provider for this project (claude, codex, opencode)')
     .option('--session <id>', 'use this session id (or a unique prefix)')
     .option('--goal <text>', 'what the work is trying to achieve (default: inferred from the session)')
     .option('--constraint <text>', 'a hard constraint; repeatable', collect)
@@ -254,7 +254,7 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
   program
     .command('sessions')
     .description('list local agent sessions for this project (read-only)')
-    .option('-p, --provider <id>', 'only this provider (claude, codex)')
+    .option('-p, --provider <id>', 'only this provider (claude, codex, opencode)')
     .option('-a, --all', 'include sessions from every directory, not just this project')
     .option('-n, --limit <n>', 'max sessions per provider', parsePositiveInt, 20)
     .action(async (options: { provider?: string; all?: boolean; limit: number }, cmd: Command) => {
@@ -393,7 +393,7 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
     program
       .command('handoff')
       .description('build a checkpoint and preview the handoff for another agent')
-      .requiredOption('--to <provider>', 'provider that will receive the handoff (claude, codex)')
+      .requiredOption('--to <provider>', 'provider that will receive the handoff (claude, codex, opencode)')
       .option('--preview', 'show the handoff without launching anything (default)')
       .option('--confirm', 'launch the target agent in this terminal with the handoff (asks first)')
       .option('-y, --yes', 'with --confirm: launch without asking')

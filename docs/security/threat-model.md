@@ -2,8 +2,11 @@
 
 ## Defaults
 
-- Local-first. No network calls and no telemetry. Repositories and transcripts are never uploaded.
-- Vendor session directories (`~/.claude`, `~/.codex`) are read-only to Relayvora.
+- Local-first. No telemetry, and no Relayvora server. Repositories and transcripts are never uploaded.
+- Network use is limited to: a daily npm registry version check from the home screen (sends nothing about the
+  user; off with `RELAYVORA_NO_UPDATE_CHECK=1` or under `CI`), and `sync` / `send`, which fetch and push the
+  project's own Git remote only when the user runs them.
+- Vendor session stores (`~/.claude`, `~/.codex`, OpenCode's database) are read-only to Relayvora.
 - Project state lives in `.relayvora/`, which ignores itself in Git so it is never committed by accident.
 
 ## Untrusted input
@@ -33,9 +36,23 @@ No shell strings, ever. See `planSpawn` in `packages/core/src/exec.ts` for the W
 - Writing an export to disk requires confirmation; non-interactive use must pass `--yes`.
 - `audit_events` records checkpoint creation and export, with the handoff file path and sizes.
 
+## Moving work between machines and people
+
+- `export` writes the re-redacted checkpoint; `--with-changes` adds uncommitted work as a patch. That patch is
+  built on a throwaway Git index (the user's index is untouched), leaves out sensitive paths, and is refused
+  outright, not redacted, if it matches a secret pattern, since a masked patch would no longer apply.
+- `import` validates the checkpoint schema, treats it as data, and re-points it at the local clone. A carried
+  patch is applied only with `--apply-changes`, only on the same base commit, after `git apply --check`, and is
+  checked against its SHA-256 first.
+- `sync` and `send` store exports on a `relayvora/handoffs` branch of the project's repository, written with Git
+  plumbing (no checkout, no working-tree or index changes). Anyone who can read the repository can read that
+  branch; both commands say so and require confirmation or `--yes`. Recipients are matched by Git email, which is
+  self-asserted: it routes items to an inbox, it does not authenticate the sender.
+- `audit_events` records exports, imports and sends.
+
 ## Launching agents (Phase 3)
 
-- Only through each agent's documented CLI (`claude [prompt]`, `codex [PROMPT]`), with an argument array and no
+- Only through each agent's documented CLI (`claude [prompt]`, `codex [PROMPT]`, `opencode --prompt`), with an argument array and no
   shell; never by writing to vendor session files or databases.
 - Always confirmed by the user (`--yes` required without a terminal). `--dry-run` shows the exact command.
 - The prompt includes the reviewed, re-redacted handoff when the command-line size permits; otherwise it points to the handoff file inside the project. As with any CLI argument, inline handoffs can be visible to local process inspection.
