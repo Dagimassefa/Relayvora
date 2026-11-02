@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-alpha.4
+
+- `relayvora mcp`: an MCP server on stdio. Any MCP-capable agent (Cursor, Copilot, Windsurf, Claude Code, Codex...)
+  can fetch handoffs, save checkpoints with its own goal, steps and blockers, list checkpoints, check the inbox and
+  import shared checkpoints, including agents Relayvora has no adapter for. It never pushes or runs commands.
+- `--help` lists OpenCode wherever an agent is named.
+
 ## 0.1.0-alpha.3
 
 - Hand work over between machines: `relayvora export --out handoff.json` on one, `relayvora import handoff.json`

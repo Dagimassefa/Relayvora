@@ -27,6 +27,8 @@ every call costs a fortune. Normally you'd open a new agent and spend twenty min
 - **Launches the next agent** with the handoff loaded, in your terminal or your editor.
 - **Follows you and your team:** pick up on another device, or send the handoff to a teammate's inbox, through
   the Git repository you already share. No extra account.
+- **Works inside any MCP agent:** `relayvora mcp` lets Cursor, Copilot, Windsurf, Claude Code, Codex and others
+  fetch handoffs, save checkpoints and check the inbox themselves.
 
 ```sh
 relayvora handoff --from codex --to claude --verify auto --confirm
@@ -140,6 +142,7 @@ relayvora watch --bell        # in a spare terminal; Ctrl+C to stop
 | `relayvora sync [-y]`                                     | Shares this project's checkpoints through the repo and pulls those from your other devices.           |
 | `relayvora send [id] --to <email> [--with-changes]`       | Sends a checkpoint to someone by their Git email; it lands in their inbox.                             |
 | `relayvora inbox [--sent]`                                | Checkpoints sent to you in this repository (or that you sent), ready to launch.                        |
+| `relayvora mcp`                                           | Runs an MCP server on stdio, so any MCP-capable agent can fetch handoffs and save checkpoints.         |
 | `relayvora config show`                                   | Shows the data directory, database path and project config.                                            |
 
 Global flags: `--json` (machine-readable), `-C/--cwd <dir>`, `-v/--verbose`, `--no-color`.
@@ -252,6 +255,35 @@ ship their own CLI, which Relayvora finds in VS Code, VS Code Insiders, Cursor, 
 To continue in an editor panel instead of a terminal, add `--copy` and paste, or tell the agent the one-line message
 the card prints (`Continue the task described in .relayvora/handoffs/<id>.md ...`).
 
+### MCP server: any agent, no adapter needed
+
+`relayvora mcp` serves the [Model Context Protocol](https://modelcontextprotocol.io) on stdio. Add it once and the
+agent can work with Relayvora itself, including agents Relayvora has no adapter for:
+
+| Tool                | What the agent can do                                                                              |
+| ------------------- | -------------------------------------------------------------------------------------------------- |
+| `get_handoff`       | Fetch a handoff (default: the latest) to continue; also finds ones synced or sent from elsewhere.  |
+| `create_checkpoint` | Save its own goal, completed and pending steps, blockers and decisions, plus Git evidence.         |
+| `list_checkpoints`  | List this project's checkpoints.                                                                   |
+| `inbox`             | Check what teammates sent (fetches the `relayvora/handoffs` branch).                               |
+| `import_checkpoint` | Import an export file or a shared checkpoint, optionally applying its uncommitted changes.         |
+
+```sh
+claude mcp add relayvora -- relayvora mcp      # Claude Code
+codex mcp add relayvora -- relayvora mcp       # Codex
+```
+
+Cursor (`.cursor/mcp.json`), Windsurf (`~/.codeium/windsurf/mcp_config.json`) and others:
+
+```json
+{ "mcpServers": { "relayvora": { "command": "relayvora", "args": ["mcp"] } } }
+```
+
+VS Code / Copilot (`.vscode/mcp.json`): `{ "servers": { "relayvora": { "command": "relayvora", "args": ["mcp"] } } }`.
+Without a global install, use `"command": "npx", "args": ["-y", "relayvora", "mcp"]`. Then ask the agent to "continue
+from the Relayvora handoff" or to "save a Relayvora checkpoint". The server works in the editor's project folder; each
+tool also takes a `project` path. It never pushes (`sync` and `send` stay at the terminal) and never runs commands.
+
 ### Measuring a relay
 
 ```sh
@@ -363,7 +395,7 @@ CI runs the build, the tests and a CLI smoke test on Windows, macOS and Linux wi
 - [ ] Run the expanded live benchmark matrix and publish its measurements (consumes agent usage)
 - [x] Published on npm as `relayvora`
 - [ ] Signed GitHub releases from the release workflow (needs a public repository); see [release instructions](docs/releasing.md)
-- [ ] MCP server, so any MCP-capable agent can fetch handoffs and check the inbox
+- [x] MCP server (`relayvora mcp`), so any MCP-capable agent can fetch handoffs, save checkpoints and check the inbox
 - [ ] More agents: Gemini CLI, Cursor CLI
 - [ ] **Version two:** dedicated VS Code extension
 

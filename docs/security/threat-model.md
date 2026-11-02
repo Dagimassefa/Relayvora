@@ -4,8 +4,8 @@
 
 - Local-first. No telemetry, and no Relayvora server. Repositories and transcripts are never uploaded.
 - Network use is limited to: a daily npm registry version check from the home screen (sends nothing about the
-  user; off with `RELAYVORA_NO_UPDATE_CHECK=1` or under `CI`), and `sync` / `send`, which fetch and push the
-  project's own Git remote only when the user runs them.
+  user; off with `RELAYVORA_NO_UPDATE_CHECK=1` or under `CI`), and `sync` / `send` / `inbox`, which fetch (and for
+  `sync` and `send`, push) the project's own Git remote only when the user runs them.
 - Vendor session stores (`~/.claude`, `~/.codex`, OpenCode's database) are read-only to Relayvora.
 - Project state lives in `.relayvora/`, which ignores itself in Git so it is never committed by accident.
 
@@ -49,6 +49,17 @@ No shell strings, ever. See `planSpawn` in `packages/core/src/exec.ts` for the W
   branch; both commands say so and require confirmation or `--yes`. Recipients are matched by Git email, which is
   self-asserted: it routes items to an inbox, it does not authenticate the sender.
 - `audit_events` records exports, imports and sends.
+
+## MCP server
+
+- `relayvora mcp` speaks JSON-RPC on stdio to the agent that started it; it opens no network port. Only protocol
+  messages go to stdout.
+- Tool arguments are validated with the same schemas as the CLI, and failures go back to the agent as tool errors.
+- It exposes reading handoffs, creating checkpoints, the inbox and import. It cannot push (`sync` and `send` stay
+  with the person at the terminal, behind their confirmation) and cannot run verification commands, so an agent
+  cannot use it to get around its client's own permission prompts for the shell.
+- `inbox` fetches the project's remote; `import_checkpoint` with `applyChanges` edits the working tree under the
+  same checks as `import --apply-changes`.
 
 ## Launching agents (Phase 3)
 

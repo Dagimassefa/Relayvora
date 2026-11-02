@@ -26,6 +26,7 @@ import { renderSessions, runSessions } from './commands/sessions.js';
 import { copyToClipboard } from './clipboard.js';
 import { type CliContext, createContext, otherAgent, selectAdapters } from './context.js';
 import { executeLaunch, planLaunch } from './launch.js';
+import { serveMcp } from './mcp.js';
 import { emit } from './output.js';
 import { banner, label, providerChip, rule, statusIcon } from './ui/components.js';
 import { highlightMarkdown } from './ui/markdown.js';
@@ -475,6 +476,26 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
       } finally {
         process.off('SIGINT', onSigint);
       }
+    });
+
+  program
+    .command('mcp')
+    .description('run an MCP server on stdio, so any agent (Cursor, Copilot, Windsurf, Claude Code, Codex...) can fetch handoffs, save checkpoints and read the inbox')
+    .addHelpText(
+      'after',
+      [
+        '',
+        'Add it to your agent:',
+        '  Claude Code   claude mcp add relayvora -- relayvora mcp',
+        '  Codex         codex mcp add relayvora -- relayvora mcp',
+        '  Cursor        .cursor/mcp.json:   { "mcpServers": { "relayvora": { "command": "relayvora", "args": ["mcp"] } } }',
+        '  VS Code       .vscode/mcp.json:   { "servers": { "relayvora": { "command": "relayvora", "args": ["mcp"] } } }',
+        '  Windsurf      ~/.codeium/windsurf/mcp_config.json, same shape as Cursor',
+      ].join('\n'),
+    )
+    .action(async (_flags: unknown, cmd: Command) => {
+      const { ctx } = ctxFor(cmd);
+      await serveMcp({ cwd: ctx.cwd });
     });
 
   const hooks = program.command('hooks').description('save checkpoints automatically from agent hooks (limit hit, compaction, session end, turns)');
