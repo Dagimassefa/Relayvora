@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0-alpha.3
+
+- Hand work over between machines: `relayvora export --out handoff.json` on one, `relayvora import handoff.json`
+  in a clone on the other. The checkpoint is re-pointed at the local clone, keeps edits made to the handoff file, and
+  the import says when the base commit has not been pushed. `export --with-changes` also carries uncommitted work as a
+  patch (sensitive files left out, secrets refused), applied with `import --apply-changes` on the same commit.
+- `export` defaults to the latest checkpoint and picks JSON for a `.json` file.
+- Share through the repository, with your Git host login as the account: `relayvora sync` gives every device the
+  full checkpoint history, `relayvora send --to <email>` sends one to a teammate, and `relayvora inbox` shows what
+  was sent to you. Everything lives on a `relayvora/handoffs` branch, written without touching your working tree.
+
 ## 0.1.0-alpha.2
 
 - Automatic checkpoints for OpenCode: `relayvora hooks install` adds a plugin that saves a checkpoint when a turn

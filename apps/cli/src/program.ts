@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { RELAYVORA_VERSION, RelayvoraError, ExitCode, type Checkpoint } from '@relayvora/core';
 import { Command, CommanderError, InvalidArgumentError, Option } from 'commander';
 import { ZodError } from 'zod';
@@ -14,6 +15,8 @@ import { renderCleanup, runCleanup, type CleanupOptions } from './commands/clean
 import { renderDoctor, runDoctor } from './commands/doctor.js';
 import { type ExportOptions, runExport } from './commands/export.js';
 import { renderHome, runHome } from './commands/home.js';
+import { type ImportOptions, renderImport, runImport } from './commands/import.js';
+import { renderInbox, renderSend, renderSync, runInbox, runSend, runSync, type SendFlags, type ShareFlags } from './commands/share.js';
 import { renderInit, runInit } from './commands/init.js';
 import { renderReport, runReport } from './commands/report.js';
 import { runWatch } from './commands/watch.js';
@@ -315,26 +318,75 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
     });
 
   program
-    .command('export <id>')
-    .description('export a checkpoint (always re-redacted); writing a file asks for confirmation')
-    .addOption(new Option('--format <format>', 'output format').choices(['markdown', 'json']).default('markdown'))
+    .command('export [id]')
+    .description('export a checkpoint (default: the latest here) as Markdown, or as JSON to import on another machine; always re-redacted')
+    .addOption(new Option('--format <format>', 'output format (default: json for a .json file, else markdown)').choices(['markdown', 'json']))
     .option('-o, --out <file>', 'write to a file instead of stdout')
+    .option('--with-changes', 'JSON: also carry your uncommitted changes as a patch (sensitive files left out)')
     .option('--force', 'overwrite an existing file')
     .option('-y, --yes', 'do not ask for confirmation')
-    .action(async (id: string, options: ExportOptions, cmd: Command) => {
+    .action(async (id: string | undefined, options: ExportOptions, cmd: Command) => {
       const { opts, ctx } = ctxFor(cmd);
       const result = await runExport(ctx, id, options);
+      const t = ui.err;
       if (opts.json) {
         const { content, ...meta } = result;
         emit(opts, result.out ? meta : result, () => '');
       } else if (result.out) {
-        const t = ui.err;
+        const carried = result.changedFiles.length ? `, changes to ${result.changedFiles.length} file(s)` : '';
         process.stderr.write(
-          `  ${statusIcon(t, 'ok')} Exported ${t.bold(result.checkpointId)} ${t.dim(`(${result.format}, ~${result.estimatedTokens} tok)`)} ${t.fg('cyan', t.sym.arrow)} ${t.bold(result.out)}\n`,
+          `  ${statusIcon(t, 'ok')} Exported ${t.bold(result.checkpointId)} ${t.dim(`(${result.format}, ~${result.estimatedTokens} tok${result.editedHandoff ? ', your edits' : ''}${carried})`)} ${t.fg('cyan', t.sym.arrow)} ${t.bold(result.out)}\n`,
         );
+        if (result.format === 'json') process.stderr.write(`  ${t.dim('On the other machine, in the project:')} ${t.bold(`relayvora import ${path.basename(result.out)}`)}\n`);
       } else {
         process.stdout.write(result.content);
       }
+      if (!opts.json) for (const n of result.notes) process.stderr.write(`  ${statusIcon(t, 'warn')} ${t.fg('amber', n)}\n`);
+    });
+
+  program
+    .command('import <file-or-id>')
+    .description('import a checkpoint exported on another machine, or shared on the relayvora/handoffs branch, ready to launch')
+    .option('--apply-changes', 'also apply the uncommitted changes it carries (needs the same commit checked out)')
+    .option('--force', 'replace a checkpoint with the same id imported earlier')
+    .option('--remote <name>', 'remote holding the shared branch', 'origin')
+    .action(async (file: string, options: ImportOptions, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      emit(opts, await runImport(ctx, file, options), (r) => renderImport(r, ui.out));
+    });
+
+  // Sharing through the repository itself: the Git host's login is the account.
+  program
+    .command('sync')
+    .description('share the checkpoints of this project through the relayvora/handoffs branch, and get those from your other devices')
+    .option('--remote <name>', 'remote to sync with', 'origin')
+    .option('-y, --yes', 'share without asking')
+    .action(async (flags: ShareFlags, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      emit(opts, await runSync(ctx, flags), (r) => renderSync(r, ui.out));
+    });
+
+  program
+    .command('send [id]')
+    .description('send a checkpoint (default: the latest) to people by their Git email; it shows up in their inbox')
+    .requiredOption('--to <email>', 'recipient; repeatable', collect)
+    .option('--with-changes', 'also carry your uncommitted changes (sensitive files left out)')
+    .option('--note <text>', 'a short message for the recipient')
+    .option('--remote <name>', 'remote to send through', 'origin')
+    .option('-y, --yes', 'send without asking')
+    .action(async (id: string | undefined, flags: SendFlags, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      emit(opts, await runSend(ctx, id, flags), (r) => renderSend(r, ui.out));
+    });
+
+  program
+    .command('inbox')
+    .description('checkpoints sent to you in this repository (by your Git email), ready to launch')
+    .option('--sent', 'show what you sent instead')
+    .option('--remote <name>', 'remote to check', 'origin')
+    .action(async (flags: ShareFlags & { sent?: boolean }, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      emit(opts, await runInbox(ctx, flags), (r) => renderInbox(r, ui.out));
     });
 
   addCheckpointOptions(

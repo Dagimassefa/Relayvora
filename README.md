@@ -140,7 +140,11 @@ relayvora watch --bell        # in a spare terminal; Ctrl+C to stop
 | `relayvora checkpoint prune [--days 30] [--dry-run] [-y]` | Deletes expired checkpoints in this project using its retention setting, or the given age; asks first. |
 | `relayvora launch <id> [--to <agent>]`                    | Starts the agent with an existing, possibly edited, handoff.                                           |
 | `relayvora report [id] [--reverify]`                      | Measures a relay: the session that continued it, context per call, onboarding, checks.                 |
-| `relayvora export <id> [--out file]`                      | Exports a checkpoint, re-redacted. Asks before writing; never overwrites without `--force`.            |
+| `relayvora export [id] [--out file] [--with-changes]`     | Exports a checkpoint (default: the latest), re-redacted; a `.json` file can be imported elsewhere.     |
+| `relayvora import <file\|id> [--apply-changes]`           | Imports a checkpoint exported elsewhere, or shared on the repo's branch, ready to `launch`.            |
+| `relayvora sync [-y]`                                     | Shares this project's checkpoints through the repo and pulls those from your other devices.           |
+| `relayvora send [id] --to <email> [--with-changes]`       | Sends a checkpoint to someone by their Git email; it lands in their inbox.                             |
+| `relayvora inbox [--sent]`                                | Checkpoints sent to you in this repository (or that you sent), ready to launch.                        |
 | `relayvora config show`                                   | Shows the data directory, database path and project config.                                            |
 
 Global flags: `--json` (machine-readable), `-C/--cwd <dir>`, `-v/--verbose`, `--no-color`.
@@ -200,6 +204,52 @@ told it can skip re-checking. The handoff file as it is on disk, including your 
 when the command line allows, otherwise a short pointer to the file. It always asks first (`--yes` for scripts), and
 every launch is recorded in the audit log with hashes of what was sent.
 
+### Another machine
+
+Start on your laptop, finish on your desktop. Export the checkpoint as JSON, carry the file over (USB, cloud drive,
+chat to yourself) and import it inside a clone of the same repository:
+
+```sh
+# laptop
+relayvora handoff --from claude --to codex
+relayvora export --out handoff.json --with-changes
+
+# desktop, in the project
+git pull
+relayvora import handoff.json --apply-changes
+relayvora launch <id>
+```
+
+The import points the checkpoint at the local clone and includes your edits to the handoff file. Code moves through
+Git: `import` says when the commit the work sits on has not been pushed yet. `--with-changes` also carries your
+uncommitted work, untracked files included, as a patch; it never touches your staging area, leaves out sensitive files
+such as `.env`, and refuses outright when the changes look like they contain secrets. `--apply-changes` applies the
+patch only on the same commit and only when it applies cleanly; otherwise it is kept in `.relayvora/handoffs/`.
+
+### Sharing: your devices and your team
+
+No Relayvora account needed: your GitHub (or any Git host) login is the account. Shared checkpoints live on a
+`relayvora/handoffs` branch of the project's own repository, so exactly the people who can read the code can read
+them. Relayvora writes that branch with Git plumbing; your working tree, staging area and current branch are never
+touched.
+
+```sh
+# every device: share yours, get the rest (full history on each one)
+relayvora sync
+
+# send to a teammate by the email they use with Git (git config user.email)
+relayvora send --to alice@example.com --note "tests still fail on CI" --with-changes
+
+# the teammate, in their clone
+relayvora inbox
+relayvora import <id> --apply-changes   # only if it carries changes
+relayvora launch <id>
+```
+
+`relayvora inbox --sent` lists what you sent. Someone without access yet? Invite them to the repository by email
+(on GitHub: Settings, Collaborators, Add people); once they accept and run `relayvora inbox`, it is there. `sync`
+and `send` ask before publishing, since everyone with access to the repository can read what is on the branch.
+
 ### VS Code, Cursor and other editors
 
 No global install is needed. The Claude Code and Codex extensions write sessions to `~/.claude` and `~/.codex` and
@@ -252,12 +302,15 @@ Cleanup removes Relayvora's checkpoint, handoff file, evidence and usage records
 and audit events are kept. Automatic hook checkpoints also obey their per-session `--keep` limit.
 Retention is age-based, so it also removes edited handoff files once their checkpoint expires; export anything you want to keep.
 
-- **Local only.** Nothing is uploaded and there is no telemetry. The one network request: at most once a day the home
+- **Local only.** Nothing is uploaded and there is no telemetry. `sync` and `send` push to your own Git remote, and
+  only when you run them and confirm. The one network request: at most once a day the home
   screen asks the npm registry for the latest version, to show an update notice. It sends nothing about you or your
   projects; turn it off with `RELAYVORA_NO_UPDATE_CHECK=1` (it is also skipped when `CI` is set).
 - **Global store:** SQLite at `%LOCALAPPDATA%\relayvora` (Windows), `~/Library/Application Support/relayvora`
   (macOS), `$XDG_DATA_HOME/relayvora` or `~/.local/share/relayvora` (Linux). Override with `RELAYVORA_HOME`.
 - **Per project:** `.relayvora/` (config and handoff files), ignored by Git through its own `.gitignore`.
+- **Exports** stay wherever you put them. A JSON export holds the redacted checkpoint and, with `--with-changes`,
+  your uncommitted code, so treat the file like the code itself.
 - **Agent sessions** are read from `CLAUDE_CONFIG_DIR` (default `~/.claude`), `CODEX_HOME` (default `~/.codex`) and
   OpenCode's database at `$XDG_DATA_HOME/opencode/opencode.db` (default `~/.local/share/opencode`, on Windows too),
   opened read-only and never written to. Session formats are not documented by the vendors, so reading them is best-effort.
@@ -305,6 +358,8 @@ CI runs the build, the tests and a CLI smoke test on Windows, macOS and Linux wi
 - [x] Cold-resume benchmark support, Claude/Codex arms, three tasks and configurable repetitions
 - [x] OpenCode support: sessions, transcripts, usage and limits from its database, and launching
 - [x] Standalone release packaging, checksums, installation smoke tests and a signed-attestation release workflow
+- [x] Cross-machine handoffs: `export` and `import`, optionally carrying uncommitted work
+- [x] Sharing through the repository: `sync` across your devices, `send` and `inbox` between people
 - [ ] Run the expanded live benchmark matrix and publish its measurements (consumes agent usage)
 - [ ] Publish the first release after the GitHub workflow validates and signs it; see [release instructions](docs/releasing.md)
 - [ ] **Version two:** dedicated VS Code extension
