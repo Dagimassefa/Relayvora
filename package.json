@@ -9,6 +9,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "site:dev": "node apps/site/serve.mjs",
     "build": "tsc -b",
     "clean": "tsc -b --clean",
     "typecheck": "tsc -b",

@@ -4,11 +4,32 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  website:
+    name: Validate website
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - name: Check website JavaScript
+        run: |
+          node --check apps/site/site.js
+          node --check apps/site/serve.mjs
+      - name: Prepare public website files
+        run: |
+          mkdir -p "$RUNNER_TEMP/relayvora-site"
+          cp apps/site/index.html apps/site/styles.css apps/site/site.js apps/site/favicon.svg "$RUNNER_TEMP/relayvora-site/"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/relayvora-site
+
   test:
     name: ${{ matrix.os }} / Node ${{ matrix.node }}
     runs-on: ${{ matrix.os }}
@@ -38,3 +59,23 @@ jobs:
           node apps/cli/dist/bin.js --version
           node apps/cli/dist/bin.js doctor --json
           node apps/cli/dist/bin.js sessions --all --json
+
+  deploy-website:
+    name: Deploy website to GitHub Pages
+    needs: [test, website]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
