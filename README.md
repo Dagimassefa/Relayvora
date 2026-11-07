@@ -110,6 +110,10 @@ task done by continuing one session versus relaying to a fresh one, scored by hi
 Relayvora works this out for you from each agent's own session records, and shows it on the home screen's
 **relay radar**, the checkpoint card's **WORTH** row, and as live alerts from `relayvora watch`:
 
+<p align="center">
+  <img src="docs/home-screen.png" alt="relayvora home screen: project status, session counts, and a relay radar flagging a 195k-token Claude Code session and a 95k-token Codex session as large and cold, each with a ready-to-run handoff command" width="760">
+</p>
+
 | Signal                  | How it is detected                                                                                                                                                                        | Verdict                                                 |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | Usage limit hit         | Claude Code: `rate_limit` API error ("You've hit your session limit · resets ..."); Codex: limit error or `rate_limit_reached_type`; OpenCode: a rate-limit (429) error from the provider | relay now                                               |
