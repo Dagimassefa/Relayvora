@@ -304,6 +304,15 @@ h1 {
   margin: 0 9px;
   color: #616274;
 }
+.ph-badge {
+  display: inline-block;
+  margin-top: 18px;
+  line-height: 0;
+}
+.ph-badge img {
+  max-width: 100%;
+  height: auto;
+}
 .relay-visual {
   position: relative;
   isolation: isolate;

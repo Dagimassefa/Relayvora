@@ -9,6 +9,8 @@ with a short, verified handoff instead of a 200k-token transcript.
 
 `Claude Code ⇄ Codex ⇄ OpenCode` · `local-only` · `no telemetry` · `Windows · macOS · Linux`
 
+<a href="https://www.producthunt.com/products/relayvora?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-relayvora" target="_blank" rel="noopener noreferrer"><img alt="Relayvora - Resume unfinished AI coding work across agents | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1308864&amp;theme=dark&amp;t=1794149851575"></a>
+
 _In memory of Captain John Price. "Bravo Six, going dark."_
 
 <img src="docs/demo.gif" alt="relayvora handoff saves the half-finished fix and its failing test; Codex picks up the handoff, finishes the fix and the test passes" width="760">
