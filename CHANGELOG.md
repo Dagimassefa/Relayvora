@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.0-alpha.5
+
+Security release for [GHSA-pw6w-429w-v39w](https://github.com/Dagimassefa/Relayvora/security/advisories/GHSA-pw6w-429w-v39w).
+Everyone who shares checkpoints (`sync`, `send`, `inbox`, `import`, or the MCP server) should upgrade.
+Reported by Corey Klass.
+
+- Shared checkpoints can no longer write outside `.relayvora/handoffs`. Checkpoint ids must be a single safe file
+  name, must match their file name on the `relayvora/handoffs` branch, and are checked before anything is written.
+  A checkpoint that fails is skipped and listed as "Not imported".
+- `report --reverify` shows the exact commands of an imported checkpoint and asks before running them; without a
+  terminal it refuses unless you pass `--yes`.
+- Imported checkpoints are marked as imported. `[observed]` claims from the sender become agent-reported, the handoff
+  says it was not verified here, and the inbox shows senders as unverified.
+- A carried patch must change exactly the files it lists, or the import is refused.
+- MCP: `get_handoff` is read-only and no longer imports (use `import_checkpoint`); `inbox` is no longer marked
+  read-only, `import_checkpoint` is marked destructive, and `project` must be inside the server's start directory.
+- Suggested `git diff` commands single-quote file names.
+- Imported handoffs and patches are written with owner-only permissions, and retention no longer stops at an invalid id.
+
 ## 0.1.0-alpha.4
 
 - `relayvora mcp`: an MCP server on stdio. Any MCP-capable agent (Cursor, Copilot, Windsurf, Claude Code, Codex...)

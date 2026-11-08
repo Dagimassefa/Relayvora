@@ -1,4 +1,4 @@
-export const RELAYVORA_VERSION = '0.1.0-alpha.4';
+export const RELAYVORA_VERSION = '0.1.0-alpha.5';
 
 /** Oldest Node.js release with unflagged `node:sqlite`. */
 export const MIN_NODE_VERSION = '22.13.0';
