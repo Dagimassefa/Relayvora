@@ -1,12 +1,14 @@
 import {
   RelayvoraError,
   ExitCode,
+  parseCommandLine,
   type AgentAdapter,
   type Checkpoint,
   type SessionSummary,
   type TranscriptDigest,
 } from '@relayvora/core';
 import { loadCheckpoint, runVerification } from '../checkpoint-service.js';
+import { confirmOrAbort } from '../confirm.js';
 import { type CliContext, openStore, selectAdapters } from '../context.js';
 import { locateProject } from '../project.js';
 import { box, compact, label, meter, providerChip, statusIcon } from '../ui/components.js';
@@ -59,6 +61,11 @@ export interface RelayReport {
 export interface ReportOptions {
   /** Re-run the checkpoint's verification commands now. */
   reverify?: boolean;
+  /**
+   * Asks before running commands that came from someone else's checkpoint. The default asks on the
+   * terminal and refuses without one; `--yes` pre-approves.
+   */
+  confirm?: (question: string) => Promise<void>;
   progress?: Progress;
 }
 
@@ -173,6 +180,35 @@ export async function runReport(ctx: CliContext, id: string | undefined, options
     .filter((e) => e.type === 'command' || e.type === 'test')
     .map((e) => outcome(e.command ?? '?', e.exitCode, e.status));
   let now: CheckOutcome[] | null = null;
+  if (options.reverify && atCheckpoint.length) {
+    // Commands in an imported checkpoint were written by the sender: show exactly what would run, and where.
+    const store = openStore(ctx);
+    let foreign: boolean;
+    try {
+      foreign = Boolean(cp.imported) || store.wasImported(cp.id);
+    } finally {
+      store.close();
+    }
+    if (foreign) {
+      const listed = atCheckpoint.map((c) => {
+        let argv: string[];
+        try {
+          argv = parseCommandLine(c.command);
+        } catch {
+          argv = [c.command];
+        }
+        return `    ${JSON.stringify(argv)}`;
+      });
+      await (options.confirm ?? ((q) => confirmOrAbort(q)))(
+        [
+          `Checkpoint ${cp.id} was imported${cp.imported ? ` from ${cp.imported.from}` : ''}: its commands were written by someone else.`,
+          `These programs will run as you, in ${cp.project.root}:`,
+          ...listed,
+          'Run them?',
+        ].join('\n'),
+      );
+    }
+  }
   if (options.reverify) {
     now = [];
     for (const c of atCheckpoint) {

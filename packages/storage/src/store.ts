@@ -211,6 +211,11 @@ export class Store {
       );
   }
 
+  /** Whether a checkpoint with this id was ever imported here (covers imports made before `imported` was recorded). */
+  wasImported(checkpointId: string): boolean {
+    return Boolean(this.db.prepare("SELECT 1 FROM audit_events WHERE action = 'checkpoint.import' AND target = ? LIMIT 1").get(checkpointId));
+  }
+
   upsertSession(session: SessionSummary, projectId: string | null): void {
     this.db
       .prepare(

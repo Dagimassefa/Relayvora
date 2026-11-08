@@ -98,9 +98,13 @@ describe('mcp server', () => {
 
     const bobEnv = { ...env, RELAYVORA_HOME: path.join(home, 'bob', 'state') };
     const bobs = createMcpHandler({ cwd: bob, env: bobEnv });
-    // Fetching by id finds it on the shared branch even before the inbox was checked.
+    // get_handoff is read-only: a checkpoint on the shared branch must be imported first.
     await git(bob, 'fetch', '-q', 'origin', '+refs/heads/relayvora/handoffs:refs/remotes/origin/relayvora/handoffs');
-    expect((await call(bobs, 'get_handoff', { id: id.slice(0, 20) })).text).toContain('Ship the release');
+    expect(await call(bobs, 'get_handoff', { id: id.slice(0, 20) })).toMatchObject({ isError: true, text: expect.stringMatching(/import_checkpoint/) });
+    expect((await call(bobs, 'import_checkpoint', { source: id.slice(0, 20) })).isError).toBe(false);
+    const handoff = (await call(bobs, 'get_handoff', { id: id.slice(0, 20) })).text;
+    expect(handoff).toContain('Ship the release');
+    expect(handoff).toContain('Imported by Relayvora from another machine or person');
 
     const inbox = await call(bobs, 'inbox');
     expect(inbox.text).toContain(`${id}`);
