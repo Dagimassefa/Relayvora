@@ -24,6 +24,7 @@ import { renderHooksInstall, renderHooksStatus, runHooksInstall, runHooksStatus,
 import { handleHookEvent, logHookProblem, parseClaudeHook, parseCodexNotify, parseOpenCodeEvent, spawnHookWorker, type HookEvent } from './hooks.js';
 import { renderSessions, runSessions } from './commands/sessions.js';
 import { copyToClipboard } from './clipboard.js';
+import { confirmOrAbort } from './confirm.js';
 import { type CliContext, createContext, otherAgent, selectAdapters } from './context.js';
 import { executeLaunch, planLaunch } from './launch.js';
 import { serveMcp } from './mcp.js';
@@ -444,11 +445,13 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
   program
     .command('report [checkpoint]')
     .description('measure a relay: the session that continued it, context per turn, and check results')
-    .option('--reverify', "re-run the checkpoint's verification commands now")
-    .action(async (id: string | undefined, flags: { reverify?: boolean }, cmd: Command) => {
+    .option('--reverify', "re-run the checkpoint's verification commands now (asks first for imported checkpoints)")
+    .option('-y, --yes', 'run the commands of an imported checkpoint without asking')
+    .action(async (id: string | undefined, flags: { reverify?: boolean; yes?: boolean }, cmd: Command) => {
       const { opts, ctx } = ctxFor(cmd);
       const report = await runReport(ctx, id, {
         ...(flags.reverify ? { reverify: true } : {}),
+        confirm: (q) => confirmOrAbort(q, flags.yes ? { yes: true } : {}),
         ...(opts.json ? {} : { progress: terminalProgress(ui.err, process.stderr) }),
       });
       emit(opts, report, (r) => renderReport(r, ui.out));

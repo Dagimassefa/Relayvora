@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { ExitCode, RelayvoraError, isValidCheckpointId } from '@relayvora/core';
 import { findRepoRoot } from '@relayvora/git';
 import type { ProjectRecord, Store } from '@relayvora/storage';
 import { z } from 'zod';
@@ -40,8 +41,17 @@ export function projectConfigPath(root: string): string {
   return path.join(projectDir(root), PROJECT_CONFIG_FILE);
 }
 
-export function handoffPath(root: string, checkpointId: string): string {
-  return path.join(projectDir(root), HANDOFFS_DIR, `${checkpointId}.md`);
+/**
+ * `<project>/.relayvora/handoffs/<id><ext>`. Ids can come from other people (shared checkpoints), so
+ * the id is validated and the result must stay inside the handoffs directory.
+ */
+export function handoffPath(root: string, checkpointId: string, ext: '.md' | '.patch' = '.md'): string {
+  const dir = path.join(projectDir(root), HANDOFFS_DIR);
+  const file = path.join(dir, `${checkpointId}${ext}`);
+  if (!isValidCheckpointId(checkpointId) || path.dirname(file) !== dir) {
+    throw new RelayvoraError(`Invalid checkpoint id: ${JSON.stringify(checkpointId)}`, ExitCode.Usage);
+  }
+  return file;
 }
 
 export function readProjectConfig(root: string): ProjectConfig | null {

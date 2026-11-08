@@ -87,10 +87,29 @@ export const DeferredRef = z.object({
 });
 export type DeferredRef = z.infer<typeof DeferredRef>;
 
+/**
+ * Checkpoint ids end up in file names (`handoffs/<id>.md`, `checkpoints/<id>.json`), and imported
+ * ids come from other people. One path segment only: no separators, no leading dot, no `..`.
+ */
+export const CHECKPOINT_ID = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/;
+
+export function isValidCheckpointId(id: string): boolean {
+  return CHECKPOINT_ID.test(id) && !id.includes('..');
+}
+
+export const CheckpointId = z.string().refine(isValidCheckpointId, {
+  message: 'Invalid checkpoint id: use letters, digits, ".", "_" and "-" only (for example cp-20261009-181502-a1b2)',
+});
+
 export const Checkpoint = z
   .object({
     schemaVersion: z.literal(CHECKPOINT_SCHEMA_VERSION),
-    id: z.string().min(1),
+    id: CheckpointId,
+    /**
+     * Set by the importing machine (never trusted from the sender): the checkpoint came from another
+     * machine or person, so its labels, command results and commands are the sender's claims.
+     */
+    imported: z.object({ at: z.iso.datetime({ offset: true }), from: z.string() }).nullable().default(null),
     /** What made this checkpoint: a person, or an agent hook (pre-compact, session-end, turn, limit). */
     trigger: z.enum(['manual', 'pre-compact', 'session-end', 'turn', 'limit']).default('manual'),
     createdAt: z.iso.datetime({ offset: true }),

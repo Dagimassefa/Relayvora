@@ -178,7 +178,8 @@ export async function writeShared(
 
 export const checkpointPath = (id: string) => `checkpoints/${id}.json`;
 export const sentPath = (id: string, email: string) => `sent/${id}/${email.toLowerCase().replace(/[^a-z0-9@._+-]/g, '_')}.json`;
-export const CHECKPOINT_PATH = /^checkpoints\/([^/]+)\.json$/;
+/** Only ids that are a single safe path segment (see isValidCheckpointId); no `/`, `\` or leading dot. */
+export const CHECKPOINT_PATH = /^checkpoints\/([A-Za-z0-9][A-Za-z0-9_.-]*)\.json$/;
 export const SENT_PATH = /^sent\/([^/]+)\/[^/]+\.json$/;
 
 /** A browser link to the repository's collaborator settings, when it is hosted on GitHub. */

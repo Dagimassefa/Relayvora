@@ -1,4 +1,4 @@
-import { RelayvoraError, ExitCode } from '@relayvora/core';
+import { RelayvoraError, ExitCode, isValidCheckpointId } from '@relayvora/core';
 import { loadCheckpoint } from '../checkpoint-service.js';
 import { confirmOrAbort } from '../confirm.js';
 import { type CliContext, openStore, otherAgent } from '../context.js';
@@ -45,8 +45,11 @@ async function openRepo(ctx: CliContext, remoteName = 'origin'): Promise<Repo> {
 
 const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
 
-/** Imports every shared checkpoint this store does not have yet. Returns the ids imported. */
-async function importMissing(ctx: CliContext, root: string, entries: Map<string, string>): Promise<string[]> {
+/**
+ * Imports every shared checkpoint this store does not have yet. Returns the ids imported, and the
+ * branch files that were refused (bad id, id that does not match the file name, invalid patch...).
+ */
+async function importMissing(ctx: CliContext, root: string, entries: Map<string, string>): Promise<{ received: string[]; rejected: string[] }> {
   const store = openStore(ctx);
   let missing: string[];
   try {
@@ -55,11 +58,18 @@ async function importMissing(ctx: CliContext, root: string, entries: Map<string,
   } finally {
     store.close();
   }
+  const received: string[] = [];
+  const rejected: string[] = [];
   for (const id of missing) {
-    const parsed = parseExport(await readBlob(root, entries.get(checkpointPath(id))!), checkpointPath(id));
-    await importParsed(ctx, parsed, id);
+    try {
+      const parsed = parseExport(await readBlob(root, entries.get(checkpointPath(id))!), checkpointPath(id), id);
+      await importParsed(ctx, parsed, `${SHARE_BRANCH}:${checkpointPath(id)}`);
+      received.push(id);
+    } catch (error) {
+      rejected.push(`${checkpointPath(id)}: ${(error as Error).message.split('\n')[0]}`);
+    }
   }
-  return missing;
+  return { received, rejected };
 }
 
 export interface SyncResult {
@@ -101,7 +111,8 @@ export async function runSync(ctx: CliContext, flags: ShareFlags = {}): Promise<
   for (const id of ids) additions.set(checkpointPath(id), json((await buildJsonExport(withEditedHandoff(await loadCheckpoint(ctx, id)).cp, false)).body));
 
   const { entries, pushed } = await writeShared(repo.root, repo.remote, additions, `relayvora: share ${ids.length} checkpoint(s)`, repo.me, { fetched: true });
-  const received = await importMissing(ctx, repo.root, entries);
+  const { received, rejected } = await importMissing(ctx, repo.root, entries);
+  notes.push(...rejected.map((r) => `Not imported: ${r}`));
   return { remote: repo.remote, url: repo.url, shared: ids, received, pushed, notes };
 }
 
@@ -203,6 +214,8 @@ export interface InboxResult {
   sent: boolean;
   items: InboxItem[];
   received: string[];
+  /** Shared checkpoints that were refused, with the reason. */
+  rejected: string[];
 }
 
 interface SentRecord {
@@ -226,7 +239,13 @@ export async function runInbox(ctx: CliContext, flags: ShareFlags & { sent?: boo
   const byId = new Map<string, InboxItem>();
   for (const [p, blob] of entries) {
     if (!SENT_PATH.test(p)) continue;
-    const rec = JSON.parse(await readBlob(repo.root, blob)) as SentRecord;
+    let rec: SentRecord;
+    try {
+      rec = JSON.parse(await readBlob(repo.root, blob)) as SentRecord;
+    } catch {
+      continue;
+    }
+    if (typeof rec?.checkpointId !== 'string' || !isValidCheckpointId(rec.checkpointId)) continue;
     const mine = flags.sent ? rec.from?.email === repo.me.email : rec.to === repo.me.email;
     const cpBlob = entries.get(checkpointPath(rec.checkpointId));
     if (!mine || !cpBlob) continue;
@@ -236,8 +255,14 @@ export async function runInbox(ctx: CliContext, flags: ShareFlags & { sent?: boo
       existing.to.push(rec.to);
       continue;
     }
-    const raw = JSON.parse(await readBlob(repo.root, cpBlob)) as { format?: string; changes?: unknown };
-    const { checkpoint } = parseExport(JSON.stringify(raw), checkpointPath(rec.checkpointId));
+    let raw: { format?: string; changes?: unknown };
+    let checkpoint;
+    try {
+      raw = JSON.parse(await readBlob(repo.root, cpBlob)) as { format?: string; changes?: unknown };
+      ({ checkpoint } = parseExport(JSON.stringify(raw), checkpointPath(rec.checkpointId), rec.checkpointId));
+    } catch {
+      continue; // reported by importMissing below
+    }
     byId.set(key, {
       checkpointId: rec.checkpointId,
       from: rec.from,
@@ -250,20 +275,23 @@ export async function runInbox(ctx: CliContext, flags: ShareFlags & { sent?: boo
       carriesChanges: raw.format === EXPORT_BUNDLE_FORMAT && Boolean(raw.changes),
     });
   }
-  const received = await importMissing(ctx, repo.root, entries);
+  const { received, rejected } = await importMissing(ctx, repo.root, entries);
   const items = [...byId.values()].sort((a, b) => b.at.localeCompare(a.at));
-  return { me: repo.me.email, sent: Boolean(flags.sent), items, received };
+  return { me: repo.me.email, sent: Boolean(flags.sent), items, received, rejected };
 }
 
 export function renderInbox(r: InboxResult, t: Theme = PLAIN): string {
   const title = r.sent ? `SENT (${r.items.length})` : `INBOX (${r.items.length})`;
   const out = ['', `  ${rule(t, title, 'violet', Math.min(t.width, 78) - 2)}`, ''];
+  const rejected = r.rejected.map((x) => `  ${statusIcon(t, 'warn')} ${t.fg('amber', `Not imported: ${x}`)}`);
   if (r.items.length === 0) {
+    if (rejected.length) out.push(...rejected, '');
     out.push(`  ${statusIcon(t, 'info')} ${t.dim(r.sent ? 'You have not sent anything from this repository yet.' : `Nothing sent to ${r.me} in this repository yet.`)}`, '');
     return out.join('\n');
   }
   for (const i of r.items) {
-    const who = r.sent ? `to ${i.to.join(', ')}` : `from ${i.from?.name ? `${i.from.name} <${i.from.email}>` : i.from?.email ?? 'unknown'}`;
+    // The sender is whatever the shared branch says; anyone who can push to it can write any name.
+    const who = r.sent ? `to ${i.to.join(', ')}` : `from ${i.from?.name ? `${i.from.name} <${i.from.email}>` : i.from?.email ?? 'unknown'} ${t.dim('(unverified)')}`;
     const target = i.targetProvider ?? (i.sourceProvider === 'manual' ? 'claude' : otherAgent(i.sourceProvider));
     out.push(`  ${statusIcon(t, 'ok')} ${t.bold(i.checkpointId)}  ${who}  ${t.dim(relativeTime(i.at))}`);
     out.push(`      ${i.goal}${i.carriesChanges ? t.dim('  · carries uncommitted changes') : ''}`);
@@ -274,5 +302,7 @@ export function renderInbox(r: InboxResult, t: Theme = PLAIN): string {
     }
     out.push('');
   }
+  if (rejected.length) out.push(...rejected, '');
+  if (!r.sent) out.push(`  ${t.dim('Senders and contents come from the shared branch and are not verified. Review a handoff before acting on it.')}`, '');
   return out.join('\n');
 }
