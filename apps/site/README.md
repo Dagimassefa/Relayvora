@@ -18,7 +18,7 @@ Open http://127.0.0.1:4173. Set `PORT` to use another port. You can also open `i
 2. In GitHub, go to **Settings → Pages → Build and deployment → Source** and select **GitHub Actions**.
 3. Run **CI** from the Actions tab if the initial push preceded enabling Pages. Successful pushes to `main` deploy automatically after website validation and the complete CLI build/test matrix pass. Pull requests validate the website without deploying it.
 
-The workflow uploads only `index.html`, `styles.css`, `site.js`, and `favicon.svg`. It does not upload the repository, local project state, preview server, or development files. Relative asset paths support project hosting at `https://Dagimassefa.github.io/Relayvora/` and custom domains.
+The workflow uploads only `index.html`, `404.html`, `styles.css`, `site.js`, `favicon.svg`, `og-image.png` (the link-preview image), `sitemap.xml`, `llms.txt` (a plain summary for AI search tools), and the guide pages (`claude-code-usage-limit/`, `switch-claude-code-codex/`, `mcp-server/`). A new guide page also needs adding to that list, to `sitemap.xml`, and to the footer links. It does not upload the repository, local project state, preview server, or development files. Relative asset paths support project hosting at `https://Dagimassefa.github.io/Relayvora/` and custom domains.
 
 ## Content and design
 

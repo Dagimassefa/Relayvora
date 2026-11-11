@@ -1815,3 +1815,146 @@ details .text-link {
     transition: none !important;
   }
 }
+
+/* Guide pages (claude-code-usage-limit/, switch-claude-code-codex/, mcp-server/, 404.html) */
+.guide {
+  padding-block: 56px 96px;
+}
+.guide article {
+  max-width: 760px;
+}
+.breadcrumb {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 34px;
+  font: 11px var(--mono);
+  color: var(--muted);
+}
+.breadcrumb a {
+  color: var(--cyan);
+  text-decoration: none;
+}
+.guide h1 {
+  margin: 14px 0 18px;
+  font-size: clamp(34px, 5vw, 52px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+.guide h2 {
+  margin: 52px 0 14px;
+  font-size: 24px;
+  letter-spacing: -0.01em;
+}
+.guide p,
+.guide li {
+  color: #c3c7d6;
+  font-size: 16px;
+  line-height: 1.75;
+}
+.guide ul {
+  padding-left: 20px;
+}
+.guide strong {
+  color: var(--text);
+}
+.guide :not(pre) > code {
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--panel);
+  color: #e6eaf7;
+  font-size: 0.86em;
+}
+.guide-lede {
+  font-size: 18px !important;
+  color: #d6dae8 !important;
+}
+.guide-install {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  margin-top: 26px;
+  font: 12px var(--mono);
+  color: var(--muted);
+}
+.guide .guide-install code {
+  padding: 10px 14px;
+  border: 1px solid #3a3a48;
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 14px;
+}
+.guide-code {
+  margin: 14px 0;
+  padding: 16px 18px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0a0a11;
+  color: #e6eaf7;
+  font: 13.5px/1.6 var(--mono);
+}
+.guide-code code {
+  overflow-wrap: normal;
+  white-space: pre;
+}
+.guide-table {
+  overflow-x: auto;
+  margin: 14px 0;
+}
+.guide-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.guide-table th,
+.guide-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  color: #c3c7d6;
+}
+.guide-table th {
+  font: 11px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.guide .faq-list summary {
+  font-size: 15px;
+}
+.guide .faq-list details p {
+  font-size: 14.5px;
+}
+.guide-next {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  margin-top: 56px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.guide-next p {
+  width: 100%;
+  margin: 0;
+  font: 11px var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.guide-next a {
+  color: var(--cyan);
+  text-decoration: none;
+}
+.guide-next a:hover {
+  text-decoration: underline;
+}
+.guide p a,
+.workflow-card p a {
+  color: var(--cyan);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
