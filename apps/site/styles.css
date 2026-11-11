@@ -304,10 +304,55 @@ h1 {
   margin: 0 9px;
   color: #616274;
 }
+.hero-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
 .ph-badge {
   display: inline-block;
-  margin-top: 18px;
   line-height: 0;
+}
+.guard-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  height: 54px;
+  max-width: 100%;
+  padding: 0 16px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font: 600 14px/1.2 var(--sans);
+  transition: border-color 0.2s;
+}
+.guard-badge:hover,
+.guard-badge:focus-visible {
+  border-color: var(--lime);
+}
+.guard-badge svg {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  fill: none;
+  stroke: var(--lime);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.guard-badge span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.guard-badge small {
+  font: 9px var(--mono);
+  letter-spacing: 0.12em;
+  color: var(--muted);
 }
 .ph-badge img {
   max-width: 100%;
