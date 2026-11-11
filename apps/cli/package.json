@@ -7,12 +7,14 @@
   "bin": {
     "relayvora": "./dist/bin.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": ">=22.13.0"
   },
   "scripts": {
-    "build": "tsc -b"
+    "build": "node init && tsc -b"
   },
   "dependencies": {
     "@relayvora/adapter-claude": "workspace:*",
