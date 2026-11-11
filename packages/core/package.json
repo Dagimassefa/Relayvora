@@ -12,9 +12,11 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "tsc -b"
+    "build": "node init && tsc -b"
   },
   "dependencies": {
     "zod": "^4.6.5"

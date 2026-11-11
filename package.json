@@ -10,7 +10,7 @@
   },
   "scripts": {
     "site:dev": "node apps/site/serve.mjs",
-    "build": "tsc -b",
+    "build": "node init && tsc -b",
     "clean": "tsc -b --clean",
     "typecheck": "tsc -b",
     "test": "vitest run",

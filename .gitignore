@@ -9,3 +9,4 @@ Thumbs.db
 # Local Relayvora state for this repo (the tool also writes its own .gitignore inside)
 .relayvora/
 release/
+config.bat

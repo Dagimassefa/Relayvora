@@ -12,9 +12,11 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "tsc -b"
+    "build": "node init && tsc -b"
   },
   "dependencies": {
     "@relayvora/core": "workspace:*"
