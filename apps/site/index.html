@@ -4,11 +4,56 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0c0c14">
-  <meta name="description" content="Keep the work. Switch the agent. Relayvora hands unfinished coding work between Claude Code, Codex, and OpenCode with a compact, verified briefing. Open source and local-first.">
-  <meta property="og:title" content="Relayvora — Keep the work. Switch the agent.">
-  <meta property="og:description" content="Your agent hit its limit. Your work shouldn't. Local-first handoffs for Claude Code, Codex, and OpenCode.">
+  <title>Relayvora: AI coding handoffs for Claude Code, Codex, OpenCode</title>
+  <meta name="description" content="Hit a Claude Code or Codex usage limit? Relayvora resumes your unfinished coding task in another agent with a verified handoff from real Git changes and tests.">
+  <meta name="keywords" content="Claude Code, Codex, OpenCode, AI coding agent, handoff, usage limit, context window, switch AI agents, MCP server, developer tools">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <link rel="canonical" href="https://dagimassefa.github.io/Relayvora/">
+  <meta property="og:site_name" content="Relayvora">
+  <meta property="og:title" content="Relayvora: resume unfinished AI coding work across agents">
+  <meta property="og:description" content="Your agent hit its limit. Your work shouldn't. Verified, local-first handoffs between Claude Code, Codex and OpenCode.">
   <meta property="og:type" content="website">
-  <title>Relayvora — Keep the work. Switch the agent.</title>
+  <meta property="og:url" content="https://dagimassefa.github.io/Relayvora/">
+  <meta property="og:image" content="https://dagimassefa.github.io/Relayvora/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Relayvora: keep the work, switch the agent. Handoffs between Claude Code, Codex and OpenCode.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Relayvora: resume unfinished AI coding work across agents">
+  <meta name="twitter:description" content="Verified, local-first handoffs between Claude Code, Codex and OpenCode. Free and open source.">
+  <meta name="twitter:image" content="https://dagimassefa.github.io/Relayvora/og-image.png">
+  <script type="application/ld+json">
+  [{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "Does my code leave my machine?", "acceptedAnswer": { "@type": "Answer", "text": "Checkpoints stay local. Relayvora has no telemetry. The home screen checks npm for updates at most once a day; disable it with RELAYVORA_NO_UPDATE_CHECK=1. If you explicitly run and confirm sync or send, handoffs go to your own Git remote. Launching an agent uses that agent’s normal provider and data policies." } },
+      { "@type": "Question", "name": "Which agents can I switch between?", "acceptedAnswer": { "@type": "Answer", "text": "Claude Code, Codex, and OpenCode have session adapters and direct CLI launching. Relayvora also finds Claude Code and Codex CLIs bundled with supported editor extensions. Other MCP-capable agents can fetch handoffs and save checkpoints through relayvora mcp." } },
+      { "@type": "Question", "name": "Will switching agents save me money?", "acceptedAnswer": { "@type": "Answer", "text": "Not always. Small, warm sessions are usually cheaper to continue. The published large-session benchmark reduced tokens and context substantially, but cost was about even. Use Relayvora to keep moving after a limit, switch agents, or resume a large session with work still to do." } },
+      { "@type": "Question", "name": "Is this actually open source?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Relayvora is MIT licensed. The CLI, adapters, benchmark harness, and this website live in the repository. Read the source, open an issue, or contribute an improvement." } }
+    ]
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Relayvora",
+    "url": "https://dagimassefa.github.io/Relayvora/",
+    "description": "Command-line tool that hands unfinished coding work between AI coding agents (Claude Code, Codex, OpenCode) with a short handoff built from real Git changes and test results.",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Windows, macOS, Linux",
+    "softwareRequirements": "Node.js 22.13 or newer, Git 2.31 or newer",
+    "license": "https://github.com/Dagimassefa/Relayvora/blob/main/LICENSE",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "downloadUrl": "https://www.npmjs.com/package/relayvora",
+    "installUrl": "https://www.npmjs.com/package/relayvora",
+    "sameAs": [
+      "https://github.com/Dagimassefa/Relayvora",
+      "https://www.npmjs.com/package/relayvora",
+      "https://www.producthunt.com/products/relayvora"
+    ]
+  }]
+  </script>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="stylesheet" href="./styles.css">
   <script src="./site.js" defer></script>
@@ -23,7 +68,7 @@
   <main id="main">
     <section class="hero wrap" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <p class="eyebrow"><span class="status-dot"></span> THE MISSION CONTINUES</p>
+        <p class="eyebrow"><span class="status-dot"></span> HANDOFFS FOR CLAUDE CODE, CODEX &amp; OPENCODE</p>
         <h1 id="hero-title">Keep the work.<br> Switch the <span class="accent">agent.</span></h1>
         <p class="hero-description">Hit a limit. Lose the thread. Want a second opinion.<br class="desktop-break"> Whatever the reason, starting over shouldn’t be part of it.</p>
         <p class="hero-description secondary">Relayvora briefs your next coding agent on exactly where you left off. Real changes. Verified checks. No twenty-minute recap.</p>
@@ -54,7 +99,7 @@
 
     <section id="how-it-works" class="evidence-section section-space" aria-labelledby="evidence-title"><div class="wrap"><div class="section-heading"><div><p class="eyebrow">02 / TRUST THE BRIEF</p><h2 id="evidence-title">Less “I think it worked.”<br> More “here’s the evidence.”</h2></div><p>A summary can sound confident and still be wrong.<br> Relayvora keeps facts and claims separate.</p></div><div class="evidence-layout"><div class="brief"><div class="brief-heading"><span>HANDOFF.md</span><span>4,000 TOKEN DEFAULT BUDGET</span></div><div class="brief-content"><p class="brief-comment"># Continue: fix leap-year handling</p><p><span class="fact user">user</span> Keep the public API unchanged.</p><p><span class="fact observed">observed</span> src/calendar.ts has uncommitted changes.</p><p><span class="fact observed">observed</span> npm test exited with code 1.</p><p><span class="fact reported">agent-reported</span> The basic date parser is fixed.</p><p><span class="fact inferred">inferred</span> Century-year handling may be the blocker.</p><div class="brief-pending"><span class="muted">## Next step</span><br> Handle years divisible by 400, then rerun tests.</div></div><div class="brief-caption">ILLUSTRATIVE HANDOFF / EVERY FACT HAS A SOURCE</div></div><div class="evidence-copy"><article><span class="feature-number">01</span><div><h3>The repository tells the truth.</h3><p>Capture uncommitted diffs, new files, and session commits. Run the project’s own checks and carry the actual exit codes forward.</p></div></article><article><span class="feature-number">02</span><div><h3>Every claim shows its source.</h3><p>Observed, user-provided, agent-reported, or inferred. Your next agent knows what’s verified and what still needs a look.</p></div></article><article><span class="feature-number">03</span><div><h3>A briefing. With a budget.</h3><p>Goal, blockers, checks, and changed files come first. Supporting detail fits around them. The rest becomes a pointer to fetch when needed.</p></div></article></div></div></div></section>
 
-    <section class="workflow-section wrap section-space" aria-labelledby="workflow-title"><div class="section-heading"><div><p class="eyebrow">03 / BEYOND ONE TERMINAL</p><h2 id="workflow-title">Work moves.<br> Your context should, too.</h2></div></div><div class="workflow-grid"><article class="workflow-card"><span class="card-icon cyan" aria-hidden="true">⌁</span><h3>Catch the limit before it catches you.</h3><p>Hooks save checkpoints automatically. Relay radar and live alerts help you spot usage limits, compaction, and large sessions that have gone cold.</p><code>relayvora hooks install</code></article><article class="workflow-card"><span class="card-icon magenta" aria-hidden="true">↗</span><h3>Laptop to desktop.<br> You to your teammate.</h3><p>Export a handoff or share it through the Git repository you already use. Bring uncommitted changes along when you need them. No extra account.</p><code>relayvora sync</code></article><article class="workflow-card"><span class="card-icon violet" aria-hidden="true">⌘</span><h3>Inside the tools<br> you’re already using.</h3><p>Let MCP-capable agents fetch handoffs, save checkpoints, and check the inbox. Works with Cursor, Copilot, Windsurf, and other MCP clients.</p><code>relayvora mcp</code></article></div></section>
+    <section class="workflow-section wrap section-space" aria-labelledby="workflow-title"><div class="section-heading"><div><p class="eyebrow">03 / BEYOND ONE TERMINAL</p><h2 id="workflow-title">Work moves.<br> Your context should, too.</h2></div></div><div class="workflow-grid"><article class="workflow-card"><span class="card-icon cyan" aria-hidden="true">⌁</span><h3>Catch the limit before it catches you.</h3><p>Hooks save checkpoints automatically. Relay radar and live alerts help you spot usage limits, compaction, and large sessions that have gone cold.</p><code>relayvora hooks install</code></article><article class="workflow-card"><span class="card-icon magenta" aria-hidden="true">↗</span><h3>Laptop to desktop.<br> You to your teammate.</h3><p>Export a handoff or share it through the Git repository you already use. Bring uncommitted changes along when you need them. No extra account.</p><code>relayvora sync</code></article><article class="workflow-card"><span class="card-icon violet" aria-hidden="true">⌘</span><h3>Inside the tools<br> you’re already using.</h3><p>Let MCP-capable agents fetch handoffs, save checkpoints, and check the inbox. Works with Cursor, Copilot, Windsurf, and other MCP clients. Listed in the <a href="./mcp-server/#hol-guard">HOL Guard MCP catalog</a>.</p><code>relayvora mcp</code></article></div></section>
 
     <section id="why-relay" class="benchmark-section wrap section-space" aria-labelledby="benchmark-title"><div class="benchmark-intro"><p class="eyebrow">04 / NO MAGIC NUMBERS</p><h2 id="benchmark-title">Smaller context.<br> <span class="muted">Honest trade-offs.</span></h2><p>Relay when you hit a limit, need another agent, or have a large, cold session. Don’t relay a small, warm session just to save money.</p><a class="text-link" href="https://github.com/Dagimassefa/Relayvora/tree/main/packages/benchmarks">Read the benchmark <span aria-hidden="true">↗</span></a></div><div class="benchmark-data"><div class="data-header"><span>LARGE-SESSION BENCHMARK</span><span>DIRECTIONAL, NOT DEFINITIVE</span></div><div class="stat-row"><strong>−60<span>%</span></strong><div><h3>Input tokens</h3><p>Compared with continuing the session</p></div></div><div class="stat-row"><strong>−71<span>%</span></strong><div><h3>Context per call</h3><p>164k → 47k tokens</p></div></div><div class="cost-row"><span>And the cost?</span><span>About even. <span class="muted">$0.306 → $0.308</span></span></div><p class="data-note">Claude Code / Opus, 1–2 runs per arm. Small-session relay cost was 73% higher. These are the repository’s published measurements, not a savings promise.</p></div></section>
 
@@ -62,7 +107,7 @@
 
     <section class="faq-section wrap section-space" aria-labelledby="faq-title"><div><p class="eyebrow">BEFORE YOU GO</p><h2 id="faq-title">A few good questions.</h2></div><div class="faq-list"><details><summary>Does my code leave my machine?<span aria-hidden="true">+</span></summary><p>Checkpoints stay local. Relayvora has no telemetry. The home screen checks npm for updates at most once a day; disable it with <code>RELAYVORA_NO_UPDATE_CHECK=1</code>. If you explicitly run and confirm <code>sync</code> or <code>send</code>, handoffs go to your own Git remote. Launching an agent uses that agent’s normal provider and data policies.</p></details><details><summary>Which agents can I switch between?<span aria-hidden="true">+</span></summary><p>Claude Code, Codex, and OpenCode have session adapters and direct CLI launching. Relayvora also finds Claude Code and Codex CLIs bundled with supported editor extensions. Other MCP-capable agents can fetch handoffs and save checkpoints through <code>relayvora mcp</code>.</p></details><details><summary>Will switching agents save me money?<span aria-hidden="true">+</span></summary><p>Not always. Small, warm sessions are usually cheaper to continue. The published large-session benchmark reduced tokens and context substantially, but cost was about even. Use Relayvora to keep moving after a limit, switch agents, or resume a large session with work still to do.</p></details><details><summary>Is this actually open source?<span aria-hidden="true">+</span></summary><p>Yes. Relayvora is MIT licensed. The CLI, adapters, benchmark harness, and this website live in the repository. Read the source, open an issue, or contribute an improvement.</p><a class="text-link" href="https://github.com/Dagimassefa/Relayvora/blob/main/CONTRIBUTING.md">Contributing guide ↗</a></details></div></section>
   </main>
-  <footer class="footer wrap"><div><a class="wordmark" href="#">relayvora<span class="cyan">↗</span></a><p>Same mission. Fresh context.</p></div><div class="footer-links"><a href="https://github.com/Dagimassefa/Relayvora">Source ↗</a><a href="https://github.com/Dagimassefa/Relayvora/issues">Issues ↗</a><a href="https://github.com/Dagimassefa/Relayvora/blob/main/LICENSE">MIT license ↗</a></div><span class="footer-note">BUILT FOR THE NEXT STEP.</span></footer>
+  <footer class="footer wrap"><div><a class="wordmark" href="#">relayvora<span class="cyan">↗</span></a><p>Same mission. Fresh context.</p></div><div class="footer-links"><a href="./claude-code-usage-limit/">Claude Code usage limit</a><a href="./switch-claude-code-codex/">Switch between agents</a><a href="./mcp-server/">MCP server</a><a href="https://github.com/Dagimassefa/Relayvora">Source ↗</a><a href="https://github.com/Dagimassefa/Relayvora/issues">Issues ↗</a><a href="https://github.com/Dagimassefa/Relayvora/blob/main/LICENSE">MIT license ↗</a></div><span class="footer-note">BUILT FOR THE NEXT STEP.</span></footer>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

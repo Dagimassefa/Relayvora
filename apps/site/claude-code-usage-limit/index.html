@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c0c14">
+  <title>Claude Code hit its usage limit? Continue in Codex | Relayvora</title>
+  <meta name="description" content="Claude Code says &quot;You've hit your session limit&quot;? Hand the unfinished task to Codex or OpenCode in one command, with real Git changes and test results.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <link rel="canonical" href="https://dagimassefa.github.io/Relayvora/claude-code-usage-limit/">
+  <meta property="og:site_name" content="Relayvora">
+  <meta property="og:title" content="Claude Code hit its usage limit? Continue in Codex | Relayvora">
+  <meta property="og:description" content="Claude Code says &quot;You've hit your session limit&quot;? Hand the unfinished task to Codex or OpenCode in one command, with real Git changes and test results.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://dagimassefa.github.io/Relayvora/claude-code-usage-limit/">
+  <meta property="og:image" content="https://dagimassefa.github.io/Relayvora/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Claude Code hit its usage limit? Continue in Codex | Relayvora">
+  <meta name="twitter:description" content="Claude Code says &quot;You've hit your session limit&quot;? Hand the unfinished task to Codex or OpenCode in one command, with real Git changes and test results.">
+  <meta name="twitter:image" content="https://dagimassefa.github.io/Relayvora/og-image.png">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Relayvora",
+          "item": "https://dagimassefa.github.io/Relayvora/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Claude Code usage limit",
+          "item": "https://dagimassefa.github.io/Relayvora/claude-code-usage-limit/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Does Relayvora send my code anywhere?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Checkpoints stay on your machine and there is no telemetry. Only if you run and confirm sync or send do handoffs go to your own Git remote."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need a paid plan for both agents?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "You need access to the agent you are switching to. Relayvora itself is free and open source (MIT)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it work with the VS Code extensions?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. The Claude Code and Codex extensions write sessions to the same place as the CLIs, and Relayvora finds the CLI bundled with the extension in VS Code, Cursor, Windsurf and VSCodium."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="header wrap">
+    <a class="wordmark" href="../" aria-label="Relayvora home"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 7h15l-6 9h10l-8 10H4l7-9H3z" fill="currentColor"/><path d="M23 5h6v6h-6z" fill="#ff2bd6"/></svg>relayvora<span class="alpha">ALPHA</span></a>
+    <nav aria-label="Main navigation"><a href="../#how-it-works">How it works</a><a href="../#why-relay">Why relay?</a><a href="https://github.com/Dagimassefa/Relayvora#commands">Docs <span aria-hidden="true">↗</span></a></nav>
+    <a class="github-link" href="https://github.com/Dagimassefa/Relayvora"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .8a11.2 11.2 0 0 0-3.54 21.83c.56.1.76-.24.76-.54v-2.1c-3.12.68-3.78-1.32-3.78-1.32-.51-1.29-1.24-1.64-1.24-1.64-1.02-.7.08-.68.08-.68 1.13.08 1.72 1.16 1.72 1.16 1 1.71 2.62 1.22 3.26.93.1-.73.39-1.22.71-1.5-2.49-.28-5.11-1.24-5.11-5.54 0-1.23.44-2.23 1.15-3.02-.12-.29-.5-1.43.11-2.97 0 0 .94-.3 3.08 1.15a10.7 10.7 0 0 1 5.6 0c2.14-1.45 3.08-1.15 3.08-1.15.61 1.54.23 2.68.11 2.97.72.79 1.15 1.79 1.15 3.02 0 4.31-2.62 5.25-5.12 5.53.4.35.76 1.03.76 2.08v3.08c0 .3.2.65.77.54A11.2 11.2 0 0 0 12 .8Z"/></svg><span>GitHub</span><span aria-hidden="true">↗</span></a>
+  </header>
+  <main id="main" class="guide wrap">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../">Relayvora</a><span aria-hidden="true">/</span><span aria-current="page">Claude Code usage limit</span></nav>
+    <article>
+      <p class="eyebrow">GUIDE / USAGE LIMITS</p>
+      <h1>Claude Code hit its usage limit. Keep working in Codex.</h1>
+      <p class="guide-lede">When Claude Code stops with “You’ve hit your session limit · resets …”, you can wait for the reset or carry on in another agent. Relayvora makes the second option take one command instead of a twenty-minute recap.</p>
+      <div class="guide-install"><code>npm install -g relayvora</code><span>Free · open source · local-first</span></div>
+
+<h2>What happens when Claude Code hits its limit</h2>
+<p>The session stops mid-task. Your changes are on disk, but the context is not: what you asked for, what the agent already tried, which test is still failing. Opening Codex means explaining all of it again, or pasting a transcript that can run to hundreds of thousands of tokens.</p>
+
+<h2>Hand the task to Codex in one command</h2>
+<p>Run this in the project folder:</p>
+<pre class="guide-code"><code>relayvora handoff --from claude --to codex --verify auto --confirm</code></pre>
+<p>Relayvora reads your latest Claude Code session for the project, collects the uncommitted changes and the commits made during the session, runs the project’s own typecheck, lint and test commands, and writes a short handoff (4,000 tokens by default). After you confirm, it starts Codex in the same terminal with the handoff loaded.</p>
+<p>Prefer OpenCode? Use <code>--to opencode</code>. Working in an editor panel? Add <code>--copy</code> and paste the handoff.</p>
+
+<h2>Why a verified handoff beats a summary</h2>
+<p>Agents are good at sounding sure about work that is not finished. Every line in a Relayvora handoff says where it came from:</p>
+<ul>
+  <li><strong>[observed]</strong>: Relayvora saw it in Git or ran the command itself, with the real exit code.</li>
+  <li><strong>[user]</strong>: something you stated.</li>
+  <li><strong>[agent-reported]</strong> and <strong>[inferred]</strong>: claims the next agent should check before relying on them.</li>
+</ul>
+<p>So Codex does not take “tests pass” on faith. It sees the failing test and its output.</p>
+
+<h2>Save the handoff before you hit the limit</h2>
+<pre class="guide-code"><code>relayvora hooks install</code></pre>
+<p>With hooks installed, Claude Code runs Relayvora when a turn ends because of a usage or rate limit, just before the conversation is compacted, and when the session ends. The checkpoint is waiting before you need it, and continuing is <code>relayvora launch &lt;id&gt; --to codex</code>.</p>
+
+<h2>Codex limits work the same way</h2>
+<p>Relayvora also reads Codex’s limit errors and its 5-hour and weekly usage windows, and flags a session at 90% or more. Hand off in the other direction with <code>relayvora handoff --from codex --to claude --verify auto --confirm</code>.</p>
+
+<h2>When not to switch</h2>
+<p>A small session that was active a moment ago is usually cheaper to continue. Relayvora’s home screen and <code>relayvora watch</code> tell you when a relay is worth it: a limit was hit, a large session has gone cold, or the conversation was compacted.</p>
+      <h2>Questions</h2>
+      <div class="faq-list"><details><summary>Does Relayvora send my code anywhere?<span aria-hidden="true">+</span></summary><p>No. Checkpoints stay on your machine and there is no telemetry. Only if you run and confirm sync or send do handoffs go to your own Git remote.</p></details><details><summary>Do I need a paid plan for both agents?<span aria-hidden="true">+</span></summary><p>You need access to the agent you are switching to. Relayvora itself is free and open source (MIT).</p></details><details><summary>Does it work with the VS Code extensions?<span aria-hidden="true">+</span></summary><p>Yes. The Claude Code and Codex extensions write sessions to the same place as the CLIs, and Relayvora finds the CLI bundled with the extension in VS Code, Cursor, Windsurf and VSCodium.</p></details></div>
+      <div class="guide-next"><p>More guides</p><a href="../switch-claude-code-codex/">Switch between agents</a><a href="../mcp-server/">MCP server</a><a href="../#get-started">Get started</a></div>
+    </article>
+  </main>
+  <footer class="footer wrap"><div><a class="wordmark" href="../">relayvora<span class="cyan">↗</span></a><p>Same mission. Fresh context.</p></div><div class="footer-links"><a href="../claude-code-usage-limit/">Claude Code usage limit</a><a href="../switch-claude-code-codex/">Switch between agents</a><a href="../mcp-server/">MCP server</a><a href="https://github.com/Dagimassefa/Relayvora">Source ↗</a><a href="https://github.com/Dagimassefa/Relayvora/blob/main/LICENSE">MIT license ↗</a></div><span class="footer-note">BUILT FOR THE NEXT STEP.</span></footer>
+</body>
+</html>

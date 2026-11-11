@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c0c14">
+  <title>Switch between Claude Code, Codex and OpenCode | Relayvora</title>
+  <meta name="description" content="Move an unfinished coding task between Claude Code, Codex and OpenCode without losing context. One command, a short handoff, real Git changes and test results.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <link rel="canonical" href="https://dagimassefa.github.io/Relayvora/switch-claude-code-codex/">
+  <meta property="og:site_name" content="Relayvora">
+  <meta property="og:title" content="Switch between Claude Code, Codex and OpenCode | Relayvora">
+  <meta property="og:description" content="Move an unfinished coding task between Claude Code, Codex and OpenCode without losing context. One command, a short handoff, real Git changes and test results.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://dagimassefa.github.io/Relayvora/switch-claude-code-codex/">
+  <meta property="og:image" content="https://dagimassefa.github.io/Relayvora/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Switch between Claude Code, Codex and OpenCode | Relayvora">
+  <meta name="twitter:description" content="Move an unfinished coding task between Claude Code, Codex and OpenCode without losing context. One command, a short handoff, real Git changes and test results.">
+  <meta name="twitter:image" content="https://dagimassefa.github.io/Relayvora/og-image.png">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Relayvora",
+          "item": "https://dagimassefa.github.io/Relayvora/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Switch between agents",
+          "item": "https://dagimassefa.github.io/Relayvora/switch-claude-code-codex/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Which agents are supported?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Claude Code, Codex and OpenCode have session adapters and direct launching. Other MCP-capable agents, such as Cursor, Windsurf and GitHub Copilot, can fetch handoffs and save checkpoints through the Relayvora MCP server."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Will switching agents save money?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not always. Small, recently active sessions are usually cheaper to continue. In the repository benchmark, relaying a large session used about 60% fewer input tokens and 71% less context per call, at about the same cost."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What do I need installed?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Node.js 22.13 or newer and Git 2.31 or newer, on Windows, macOS or Linux. Install with npm install -g relayvora."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="header wrap">
+    <a class="wordmark" href="../" aria-label="Relayvora home"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 7h15l-6 9h10l-8 10H4l7-9H3z" fill="currentColor"/><path d="M23 5h6v6h-6z" fill="#ff2bd6"/></svg>relayvora<span class="alpha">ALPHA</span></a>
+    <nav aria-label="Main navigation"><a href="../#how-it-works">How it works</a><a href="../#why-relay">Why relay?</a><a href="https://github.com/Dagimassefa/Relayvora#commands">Docs <span aria-hidden="true">↗</span></a></nav>
+    <a class="github-link" href="https://github.com/Dagimassefa/Relayvora"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .8a11.2 11.2 0 0 0-3.54 21.83c.56.1.76-.24.76-.54v-2.1c-3.12.68-3.78-1.32-3.78-1.32-.51-1.29-1.24-1.64-1.24-1.64-1.02-.7.08-.68.08-.68 1.13.08 1.72 1.16 1.72 1.16 1 1.71 2.62 1.22 3.26.93.1-.73.39-1.22.71-1.5-2.49-.28-5.11-1.24-5.11-5.54 0-1.23.44-2.23 1.15-3.02-.12-.29-.5-1.43.11-2.97 0 0 .94-.3 3.08 1.15a10.7 10.7 0 0 1 5.6 0c2.14-1.45 3.08-1.15 3.08-1.15.61 1.54.23 2.68.11 2.97.72.79 1.15 1.79 1.15 3.02 0 4.31-2.62 5.25-5.12 5.53.4.35.76 1.03.76 2.08v3.08c0 .3.2.65.77.54A11.2 11.2 0 0 0 12 .8Z"/></svg><span>GitHub</span><span aria-hidden="true">↗</span></a>
+  </header>
+  <main id="main" class="guide wrap">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../">Relayvora</a><span aria-hidden="true">/</span><span aria-current="page">Switch between agents</span></nav>
+    <article>
+      <p class="eyebrow">GUIDE / SWITCHING AGENTS</p>
+      <h1>Switch between Claude Code, Codex and OpenCode without starting over.</h1>
+      <p class="guide-lede">Hit a limit, get stuck, or want a second opinion from another model: the work should move with you. Relayvora hands the task over in any direction between the three agents.</p>
+      <div class="guide-install"><code>npm install -g relayvora</code><span>Free · open source · local-first</span></div>
+
+<h2>Every direction, one command</h2>
+<div class="guide-table"><table>
+  <thead><tr><th>From</th><th>To</th><th>Command</th></tr></thead>
+  <tbody>
+    <tr><td>Claude Code</td><td>Codex</td><td><code>relayvora handoff --from claude --to codex --verify auto --confirm</code></td></tr>
+    <tr><td>Codex</td><td>Claude Code</td><td><code>relayvora handoff --from codex --to claude --verify auto --confirm</code></td></tr>
+    <tr><td>Claude Code</td><td>OpenCode</td><td><code>relayvora handoff --from claude --to opencode --verify auto --confirm</code></td></tr>
+    <tr><td>OpenCode</td><td>Claude Code</td><td><code>relayvora handoff --from opencode --to claude --verify auto --confirm</code></td></tr>
+  </tbody>
+</table></div>
+
+<h2>What the next agent receives</h2>
+<p>A handoff built within a token budget (4,000 by default): the goal, your latest requests, blockers, test results and changed files always; then failing output, diffs and new files while they fit; anything else as a “fetch this if needed” line. The next agent starts with the brief, not your entire history.</p>
+<p>Secrets are redacted before anything is stored, and <code>.env</code> files, keys and binaries are never read.</p>
+
+<h2>How the agent is started</h2>
+<p>Relayvora launches the agent through its documented command line (<code>claude</code>, <code>codex</code>, <code>opencode --prompt</code>) in your terminal and project folder, using the CLI on your PATH or the one bundled with your editor extension. It re-checks the repository just before launching and always asks first.</p>
+<p>To continue in an editor panel instead, add <code>--copy</code> and paste, or give the agent the one-line message the summary card prints.</p>
+
+<h2>Your own facts, labelled as yours</h2>
+<pre class="guide-code"><code>relayvora handoff --from codex --to claude --goal &quot;Fix leap-year handling&quot; --constraint &quot;Keep the public API&quot; --pending &quot;Handle years divisible by 400&quot; --verify auto</code></pre>
+<p>Goals, constraints and steps you pass are labelled <strong>[user]</strong>. Facts Relayvora verified are <strong>[observed]</strong>. What the previous agent said about itself stays <strong>[agent-reported]</strong>.</p>
+
+<h2>Across machines and teammates</h2>
+<p><code>relayvora export</code> and <code>relayvora import</code> move a checkpoint to another computer, optionally with uncommitted changes. <code>relayvora send --to teammate@example.com</code> shares one through a branch in your own Git repository, and they pick it up with <code>relayvora inbox</code>.</p>
+      <h2>Questions</h2>
+      <div class="faq-list"><details><summary>Which agents are supported?<span aria-hidden="true">+</span></summary><p>Claude Code, Codex and OpenCode have session adapters and direct launching. Other MCP-capable agents, such as Cursor, Windsurf and GitHub Copilot, can fetch handoffs and save checkpoints through the Relayvora MCP server.</p></details><details><summary>Will switching agents save money?<span aria-hidden="true">+</span></summary><p>Not always. Small, recently active sessions are usually cheaper to continue. In the repository benchmark, relaying a large session used about 60% fewer input tokens and 71% less context per call, at about the same cost.</p></details><details><summary>What do I need installed?<span aria-hidden="true">+</span></summary><p>Node.js 22.13 or newer and Git 2.31 or newer, on Windows, macOS or Linux. Install with npm install -g relayvora.</p></details></div>
+      <div class="guide-next"><p>More guides</p><a href="../claude-code-usage-limit/">Claude Code usage limit</a><a href="../mcp-server/">MCP server</a><a href="../#get-started">Get started</a></div>
+    </article>
+  </main>
+  <footer class="footer wrap"><div><a class="wordmark" href="../">relayvora<span class="cyan">↗</span></a><p>Same mission. Fresh context.</p></div><div class="footer-links"><a href="../claude-code-usage-limit/">Claude Code usage limit</a><a href="../switch-claude-code-codex/">Switch between agents</a><a href="../mcp-server/">MCP server</a><a href="https://github.com/Dagimassefa/Relayvora">Source ↗</a><a href="https://github.com/Dagimassefa/Relayvora/blob/main/LICENSE">MIT license ↗</a></div><span class="footer-note">BUILT FOR THE NEXT STEP.</span></footer>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c0c14">
+  <title>Relayvora MCP server for Cursor, Copilot and Windsurf</title>
+  <meta name="description" content="Add the Relayvora MCP server to Claude Code, Codex, Cursor, Windsurf or VS Code Copilot so any agent can fetch handoffs and save checkpoints itself.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <link rel="canonical" href="https://dagimassefa.github.io/Relayvora/mcp-server/">
+  <meta property="og:site_name" content="Relayvora">
+  <meta property="og:title" content="Relayvora MCP server for Cursor, Copilot and Windsurf">
+  <meta property="og:description" content="Add the Relayvora MCP server to Claude Code, Codex, Cursor, Windsurf or VS Code Copilot so any agent can fetch handoffs and save checkpoints itself.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://dagimassefa.github.io/Relayvora/mcp-server/">
+  <meta property="og:image" content="https://dagimassefa.github.io/Relayvora/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Relayvora MCP server for Cursor, Copilot and Windsurf">
+  <meta name="twitter:description" content="Add the Relayvora MCP server to Claude Code, Codex, Cursor, Windsurf or VS Code Copilot so any agent can fetch handoffs and save checkpoints itself.">
+  <meta name="twitter:image" content="https://dagimassefa.github.io/Relayvora/og-image.png">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Relayvora",
+          "item": "https://dagimassefa.github.io/Relayvora/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "MCP server",
+          "item": "https://dagimassefa.github.io/Relayvora/mcp-server/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Which clients does it work with?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Any client that supports MCP servers over stdio, including Claude Code, Codex, Cursor, Windsurf and VS Code with GitHub Copilot."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can an agent push code or run commands through it?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. The server never pushes to a remote and never runs commands."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which project does it use?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The folder the editor or agent started the server in. Each tool also accepts a project path inside that folder."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="header wrap">
+    <a class="wordmark" href="../" aria-label="Relayvora home"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 7h15l-6 9h10l-8 10H4l7-9H3z" fill="currentColor"/><path d="M23 5h6v6h-6z" fill="#ff2bd6"/></svg>relayvora<span class="alpha">ALPHA</span></a>
+    <nav aria-label="Main navigation"><a href="../#how-it-works">How it works</a><a href="../#why-relay">Why relay?</a><a href="https://github.com/Dagimassefa/Relayvora#commands">Docs <span aria-hidden="true">↗</span></a></nav>
+    <a class="github-link" href="https://github.com/Dagimassefa/Relayvora"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .8a11.2 11.2 0 0 0-3.54 21.83c.56.1.76-.24.76-.54v-2.1c-3.12.68-3.78-1.32-3.78-1.32-.51-1.29-1.24-1.64-1.24-1.64-1.02-.7.08-.68.08-.68 1.13.08 1.72 1.16 1.72 1.16 1 1.71 2.62 1.22 3.26.93.1-.73.39-1.22.71-1.5-2.49-.28-5.11-1.24-5.11-5.54 0-1.23.44-2.23 1.15-3.02-.12-.29-.5-1.43.11-2.97 0 0 .94-.3 3.08 1.15a10.7 10.7 0 0 1 5.6 0c2.14-1.45 3.08-1.15 3.08-1.15.61 1.54.23 2.68.11 2.97.72.79 1.15 1.79 1.15 3.02 0 4.31-2.62 5.25-5.12 5.53.4.35.76 1.03.76 2.08v3.08c0 .3.2.65.77.54A11.2 11.2 0 0 0 12 .8Z"/></svg><span>GitHub</span><span aria-hidden="true">↗</span></a>
+  </header>
+  <main id="main" class="guide wrap">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../">Relayvora</a><span aria-hidden="true">/</span><span aria-current="page">MCP server</span></nav>
+    <article>
+      <p class="eyebrow">GUIDE / MCP</p>
+      <h1>The Relayvora MCP server: handoffs for any agent.</h1>
+      <p class="guide-lede">relayvora mcp serves the Model Context Protocol on stdio. Add it once, and the agent can fetch a handoff or save a checkpoint itself, including agents Relayvora has no adapter for.</p>
+      <div class="guide-install"><code>npm install -g relayvora</code><span>Free · open source · local-first</span></div>
+
+<h2>Add it to your agent</h2>
+<p>Claude Code and Codex:</p>
+<pre class="guide-code"><code>claude mcp add relayvora -- relayvora mcp
+codex mcp add relayvora -- relayvora mcp</code></pre>
+<p>Cursor (<code>.cursor/mcp.json</code>), Windsurf (<code>~/.codeium/windsurf/mcp_config.json</code>) and others:</p>
+<pre class="guide-code"><code>{ &quot;mcpServers&quot;: { &quot;relayvora&quot;: { &quot;command&quot;: &quot;relayvora&quot;, &quot;args&quot;: [&quot;mcp&quot;] } } }</code></pre>
+<p>VS Code and GitHub Copilot (<code>.vscode/mcp.json</code>):</p>
+<pre class="guide-code"><code>{ &quot;servers&quot;: { &quot;relayvora&quot;: { &quot;command&quot;: &quot;relayvora&quot;, &quot;args&quot;: [&quot;mcp&quot;] } } }</code></pre>
+<p>Without a global install, use <code>"command": "npx", "args": ["-y", "relayvora", "mcp"]</code>.</p>
+
+<h2>Tools the agent gets</h2>
+<div class="guide-table"><table>
+  <thead><tr><th>Tool</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>get_handoff</code></td><td>Reads a handoff saved for this project (default: the latest). Read-only.</td></tr>
+    <tr><td><code>create_checkpoint</code></td><td>Saves the agent’s goal, completed and pending steps, blockers and decisions, plus Git evidence from the repository.</td></tr>
+    <tr><td><code>list_checkpoints</code></td><td>Lists this project’s checkpoints.</td></tr>
+    <tr><td><code>inbox</code></td><td>Checks what teammates sent and imports it.</td></tr>
+    <tr><td><code>import_checkpoint</code></td><td>Imports an export file or a shared checkpoint, optionally applying its uncommitted changes.</td></tr>
+  </tbody>
+</table></div>
+<p>Then ask the agent to “continue from the Relayvora handoff” or to “save a Relayvora checkpoint”.</p>
+
+<h2>Designed to stay in your hands</h2>
+<p>The server never pushes to a remote and never runs commands: sharing (<code>sync</code>, <code>send</code>) and test runs stay with you at the terminal. Tools that write files are marked as such, so clients can ask before using them, and a handoff that came from someone else is marked as imported and unverified.</p>
+<p>Because it runs no commands, a checkpoint saved through MCP records Git evidence but not test results. For a verified test run, use <code>relayvora handoff --to codex --verify auto</code> in the terminal.</p>
+
+<h2 id="hol-guard">Listed in the HOL Guard catalog</h2>
+<p>Relayvora is an <a href="https://github.com/hashgraph-online/hol-guard/blob/main/contributions/mcp-servers/mcp.relayvora.json">external, opt-in MCP server</a> in <a href="https://github.com/hashgraph-online/hol-guard">HOL Guard</a>’s catalog, reviewed by its maintainers. Guard recognises the server when it is launched as <code>relayvora mcp</code> and stays off until you enable it. Once enabled, it applies these defaults:</p>
+<div class="guide-table"><table>
+  <thead><tr><th>Tool</th><th>Guard default</th></tr></thead>
+  <tbody>
+    <tr><td><code>list_checkpoints</code>, <code>get_handoff</code></td><td>Guard’s normal handling. Both only read checkpoints saved in the project.</td></tr>
+    <tr><td><code>create_checkpoint</code></td><td>Asks first. It reads agent session records, writes under <code>.relayvora/</code>, and removes checkpoints past retention (30 days by default).</td></tr>
+    <tr><td><code>inbox</code>, <code>import_checkpoint</code></td><td>Asks first. They fetch from a Git remote, or can apply carried changes to your working tree.</td></tr>
+  </tbody>
+</table></div>
+<p>Guard matches the installed <code>relayvora</code> command, so use the global install rather than <code>npx</code> if you want these defaults to apply.</p>
+      <h2>Questions</h2>
+      <div class="faq-list"><details><summary>Which clients does it work with?<span aria-hidden="true">+</span></summary><p>Any client that supports MCP servers over stdio, including Claude Code, Codex, Cursor, Windsurf and VS Code with GitHub Copilot.</p></details><details><summary>Can an agent push code or run commands through it?<span aria-hidden="true">+</span></summary><p>No. The server never pushes to a remote and never runs commands.</p></details><details><summary>Which project does it use?<span aria-hidden="true">+</span></summary><p>The folder the editor or agent started the server in. Each tool also accepts a project path inside that folder.</p></details></div>
+      <div class="guide-next"><p>More guides</p><a href="../claude-code-usage-limit/">Claude Code usage limit</a><a href="../switch-claude-code-codex/">Switch between agents</a><a href="../#get-started">Get started</a></div>
+    </article>
+  </main>
+  <footer class="footer wrap"><div><a class="wordmark" href="../">relayvora<span class="cyan">↗</span></a><p>Same mission. Fresh context.</p></div><div class="footer-links"><a href="../claude-code-usage-limit/">Claude Code usage limit</a><a href="../switch-claude-code-codex/">Switch between agents</a><a href="../mcp-server/">MCP server</a><a href="https://github.com/Dagimassefa/Relayvora">Source ↗</a><a href="https://github.com/Dagimassefa/Relayvora/blob/main/LICENSE">MIT license ↗</a></div><span class="footer-note">BUILT FOR THE NEXT STEP.</span></footer>
+</body>
+</html>

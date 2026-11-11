@@ -1,0 +1,22 @@
+# Relayvora
+
+> Relayvora is a free, open-source (MIT), local-first command-line tool that hands unfinished coding work between AI coding agents: Claude Code, Codex and OpenCode. When an agent hits its usage limit, gets stuck, or a session grows too large, one command builds a short handoff (4,000 tokens by default) from the session transcript, the real Git changes and the project's own test results, and starts the next agent with it.
+
+Key facts:
+- Install: npm install -g relayvora (Node.js 22.13+, Git 2.31+; Windows, macOS, Linux).
+- Main command: relayvora handoff --from claude --to codex --verify auto --confirm
+- Every fact in a handoff is labelled [observed] (verified from Git or a command Relayvora ran), [user], [agent-reported] or [inferred].
+- relayvora hooks install saves a checkpoint automatically when Claude Code, Codex or OpenCode hits a usage limit, compacts, or ends a session.
+- relayvora mcp is an MCP server so any MCP client (Cursor, Windsurf, VS Code Copilot, Claude Code, Codex) can fetch handoffs and save checkpoints. It never pushes or runs commands. It is listed in the HOL Guard MCP catalog as an external, opt-in server.
+- Checkpoints stay on your machine. No telemetry. Sharing (sync, send, inbox) goes through a branch in your own Git repository.
+- Benchmark (repository, directional): relaying a large session used about 60% fewer input tokens and 71% less context per call than continuing, at about the same cost. Small, warm sessions are cheaper to continue.
+
+## Guides
+- [Claude Code usage limit](https://dagimassefa.github.io/Relayvora/claude-code-usage-limit/): Claude Code says "You've hit your session limit"? Hand the unfinished task to Codex or OpenCode in one command, with real Git changes and test results.
+- [Switch between agents](https://dagimassefa.github.io/Relayvora/switch-claude-code-codex/): Move an unfinished coding task between Claude Code, Codex and OpenCode without losing context. One command, a short handoff, real Git changes and test results.
+- [MCP server](https://dagimassefa.github.io/Relayvora/mcp-server/): Add the Relayvora MCP server to Claude Code, Codex, Cursor, Windsurf or VS Code Copilot so any agent can fetch handoffs and save checkpoints itself.
+
+## Links
+- [Website](https://dagimassefa.github.io/Relayvora/)
+- [Source code and documentation](https://github.com/Dagimassefa/Relayvora)
+- [npm package](https://www.npmjs.com/package/relayvora)
