@@ -151,6 +151,8 @@ relayvora watch --bell        # in a spare terminal; Ctrl+C to stop
 | `relayvora send [id] --to <email> [--with-changes]`       | Sends a checkpoint to someone by their Git email; it lands in their inbox.                             |
 | `relayvora inbox [--sent]`                                | Checkpoints sent to you in this repository (or that you sent), ready to launch.                        |
 | `relayvora mcp`                                           | Runs an MCP server on stdio, so any MCP-capable agent can fetch handoffs and save checkpoints.         |
+| `relayvora gate run` / `status`                           | Experimental: starts the app, runs Kane and checks, reports `verified` only if bound to unchanged source. |
+| `relayvora recover run` / `status` / `report [id]`        | Experimental: on a confirmed Kane failure, a fallback agent fixes it and Relayvora rechecks.           |
 | `relayvora config show`                                   | Shows the data directory, database path and project config.                                            |
 
 Global flags: `--json` (machine-readable), `-C/--cwd <dir>`, `-v/--verbose`, `--no-color`.
@@ -379,9 +381,9 @@ packages/git/              read-only Git evidence: status, diffs, untracked file
 packages/adapter-claude/   Claude Code: session discovery, transcript reading, launch
 packages/adapter-codex/    Codex: session discovery, transcript reading, launch
 packages/adapter-opencode/ OpenCode: sessions and transcripts from its SQLite database, launch
-packages/benchmarks/       normal-vs-relay benchmark harness, tasks, hidden tests and results
-fixtures/                  synthetic session files for adapter tests
-docs/                      architecture and security notes
+packages/benchmarks/       normal-vs-relay and verified-recovery benchmark harnesses, tasks, hidden tests and results
+fixtures/                  synthetic session files for adapter tests; demo-app/ is the Kane recovery target
+docs/                      architecture, security, completion gate and recovery notes
 ```
 
 ## Development
@@ -420,6 +422,9 @@ CI runs the build, the tests and a CLI smoke test on Windows, macOS and Linux wi
 - [x] Published on npm as `relayvora`
 - [ ] Signed GitHub releases from the release workflow (needs a public repository); see [release instructions](docs/releasing.md)
 - [x] MCP server (`relayvora mcp`), so any MCP-capable agent can fetch handoffs, save checkpoints and check the inbox
+- [x] Kane CLI browser verification in checkpoints (`--verify kane`), parsed from real kane-cli 0.10.8 output
+- [x] Experimental verified completion gate and cross-agent recovery loop (`gate`, `recover`)
+- [ ] Recovery benchmark on harder tasks with repetitions and Codex (first run did not discriminate)
 - [ ] More agents: Gemini CLI, Cursor CLI
 - [ ] **Version two:** dedicated VS Code extension
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- `--verify kane --kane-objective` runs [Kane CLI](https://www.npmjs.com/package/@testmuai/kane-cli) in a checkpoint and
+  records its result in the handoff, including Kane's verdict (reason, bug, root cause, unverified suggestion) and
+  evidence-pack path. A failure counts only when Kane confirms an application defect; Kane's shareable link is never recorded.
+- Experimental `relayvora gate run|status`: starts the app from the checked-out source (`--start`, `--url`), points Kane at
+  it, runs `--check` regression commands, and reports `verified` only when the app stayed alive and nothing changed.
+  The spec, `--protect` files and objective are locked; state is signed; one run per project at a time.
+- Experimental `relayvora recover run|status|report`: on a confirmed failure, a fallback agent (Codex or Claude Code,
+  headless, no permission bypasses) gets Kane's findings; Relayvora restarts the app and rechecks up to `--max-attempts`,
+  then prints a timeline. See [docs/recovery.md](docs/recovery.md).
+- `fixtures/demo-app`: a dependency-free target app with a recovery task, and `packages/benchmarks/recovery.mjs`, a
+  four-group recovery benchmark scored on a hidden Kane objective.
+- Benchmark: Codex runs use `-c sandbox_mode=workspace-write`, since codex-cli 0.167 removed `--full-auto`.
+
 ## 0.1.0-alpha.5
 
 Security release for [GHSA-pw6w-429w-v39w](https://github.com/Dagimassefa/Relayvora/security/advisories/GHSA-pw6w-429w-v39w).
