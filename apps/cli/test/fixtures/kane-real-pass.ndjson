@@ -1,0 +1,16 @@
+{"type":"stream_start","cli_version":"0.10.8","surface":"run","pid":1,"v":1,"ts":"2026-11-23T09:03:40.074Z"}
+{"type":"recording_state","enabled":true,"session_id":"00000000-0000-0000-0000-000000000000","persist":false,"v":1,"ts":"2026-11-23T09:03:40.132Z"}
+{"type":"skill_update_available","current":null,"latest":"0.1.4","install_cmd":"kane-cli install skill","v":1,"ts":"2026-11-23T09:03:44.604Z"}
+{"type":"bifurcation","flows":["Navigate to http://localhost:3000 then save an item named milk, and verify milk appears in the list"],"count":1,"v":1,"ts":"2026-11-23T09:04:13.909Z"}
+{"step":2,"status":"running","remark":"Step 1","v":1,"ts":"2026-11-23T09:04:15.988Z"}
+{"step":2,"status":"done","remark":"navigate: Navigate to http://localhost:3000","v":1,"ts":"2026-11-23T09:04:16.009Z"}
+{"step":3,"status":"running","remark":"Step 2","v":1,"ts":"2026-11-23T09:04:19.145Z"}
+{"step":3,"status":"done","remark":"type: Typing milk into the Item field","v":1,"ts":"2026-11-23T09:04:26.397Z"}
+{"step":4,"status":"running","remark":"Step 3","v":1,"ts":"2026-11-23T09:04:27.222Z"}
+{"step":4,"status":"done","remark":"click: Clicking Save button for milk in the Demo List form","v":1,"ts":"2026-11-23T09:04:35.631Z"}
+{"step":5,"status":"running","remark":"Step 4","v":1,"ts":"2026-11-23T09:04:36.308Z"}
+{"step":5,"status":"done","remark":"analyze: milk appears in the list","v":1,"ts":"2026-11-23T09:04:45.356Z"}
+{"step":6,"status":"running","remark":"Step 5","v":1,"ts":"2026-11-23T09:04:46.000Z"}
+{"step":6,"status":"done","remark":"assert: milk appears in the list","v":1,"ts":"2026-11-23T09:04:46.025Z"}
+{"type":"coverage","status":"skipped","reason":"not_assurance_project","pack":"C:\\Users\\user\\.testmuai\\kaneai\\sessions\\00000000-0000-0000-0000-000000000000\\evidence\\00000000-0000-0000-0000-000000000000.evidence","v":1,"ts":"2026-11-23T09:05:13.304Z"}
+{"type":"run_end","status":"passed","summary":"You asked to save an item named milk.\nMilk was added to the list.\nThe item is visible in the list, so the request was completed.","one_liner":"saved milk on the local list page","final_state":{"url":"http://localhost:3000/","milk_in_list":"true"},"reason":"Objective completed","duration":50.9,"bifurcated":false,"total_runs":1,"credits_consumed":17.319825,"session_dir":"C:\\Users\\user/.testmuai/kaneai/sessions\\00000000-0000-0000-0000-000000000000","run_dir":"C:\\Users\\user/.testmuai/kaneai/sessions\\00000000-0000-0000-0000-000000000000\\runs\\0","result_code":100,"reason_code":"success.complete","per_flow_metadata":[{"result_code":"100","reason_code":"success.complete","error_message":null,"summary":"You asked to save an item named milk.\nMilk was added to the list.\nThe item is visible in the list, so the request was completed.","one_liner":"saved milk on the local list page","credits_consumed":17.319825}],"run_id":"run-0","coverage":{"status":"skipped"},"v":1,"ts":"2026-11-23T09:05:13.305Z"}
