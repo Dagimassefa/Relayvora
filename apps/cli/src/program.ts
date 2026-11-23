@@ -28,6 +28,8 @@ import { confirmOrAbort } from './confirm.js';
 import { type CliContext, createContext, otherAgent, selectAdapters } from './context.js';
 import { executeLaunch, planLaunch } from './launch.js';
 import { serveMcp } from './mcp.js';
+import { gateStatus, runGate, type GateRecord } from './completion-gate.js';
+import { loadRecovery, renderRecoveryReport, runRecovery, type RecoveryEvent, type RecoveryRecord } from './recovery.js';
 import { emit } from './output.js';
 import { banner, label, providerChip, rule, statusIcon } from './ui/components.js';
 import { highlightMarkdown } from './ui/markdown.js';
@@ -71,6 +73,7 @@ function addCheckpointOptions(cmd: Command): Command {
     .option('--blocker <text>', 'a known blocker; repeatable', collect)
     .option('--decision <text>', 'a decision already made; repeatable', collect)
     .option('--verify <command>', 'run a command (no shell) and record its exit code; "auto" runs the project typecheck/lint/test scripts; repeatable', collect)
+    .option('--kane-objective <text>', 'browser objective for --verify kane (include the URL and expected behavior)')
     .option('--verify-timeout <seconds>', 'timeout per verification command', parsePositiveInt, 600)
     .option('--budget <tokens>', 'token budget for the handoff text (estimated tokens)', parsePositiveInt)
     .option('--no-transcript', 'do not read the session transcript')
@@ -90,6 +93,7 @@ interface CheckpointFlags {
   blocker?: string[];
   decision?: string[];
   verify?: string[];
+  kaneObjective?: string;
   verifyTimeout: number;
   budget?: number;
   transcript: boolean;
@@ -113,6 +117,7 @@ function toCreateOptions(flags: CheckpointFlags, opts: GlobalOptions, ui: Ui): C
   if (flags.session) o.session = flags.session;
   if (flags.to) o.to = flags.to;
   if (flags.goal) o.goal = flags.goal;
+  if (flags.kaneObjective !== undefined) o.kaneObjective = flags.kaneObjective;
   if (flags.budget !== undefined) o.budget = flags.budget;
   o.commits = flags.commits;
   if (flags.commitsSince) o.commitsSince = flags.commitsSince;
@@ -442,10 +447,78 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
       await launchWithUi(ctx, cp, flags.to ?? null, flags, ui);
     });
 
+  const gate = program.command('gate').description('run or inspect the fail-closed Kane completion gate');
+  const renderGate = (record: GateRecord) => [
+    `Completion gate: ${record.state.toUpperCase()}`,
+    ...(record.runtime ? [`App: ${record.runtime.command} at ${record.runtime.url}`] : []),
+    ...(record.result ? [`Kane: ${record.result.status} (exit ${record.result.exitCode ?? 'unknown'})`, record.result.detail] : []),
+    ...record.checks.map((c) => `Check ${c.command}: ${c.status} (exit ${c.exitCode ?? 'unknown'})`),
+    ...record.reasons.map((reason) => `- ${reason}`),
+  ].filter(Boolean).join('\n');
+  const gateOptions = (command: Command) => command
+    .requiredOption('--spec <path>', 'acceptance specification inside the project (locked on the first run)')
+    .requiredOption('--objective <text>', 'Kane browser objective')
+    .option('--start <command>', 'start the app from the checked-out source (no shell); required for a verified result')
+    .option('--url <url>', 'local URL the started app serves; Kane is pointed at it')
+    .option('--ready-timeout <seconds>', 'how long to wait for the app to answer', parsePositiveInt, 60)
+    .option('--check <command>', 'regression command run after Kane (no shell); repeatable', collect)
+    .option('--protect <path>', 'extra file locked with the spec, e.g. a test file; repeatable', collect)
+    .option('--timeout <seconds>', 'timeout per Kane run or check, in seconds', parsePositiveInt, 600);
+  type GateFlags = { spec: string; objective: string; start?: string; url?: string; readyTimeout: number; check?: string[]; protect?: string[]; timeout: number };
+  const toGateOptions = (f: GateFlags) => ({ spec: f.spec, objective: f.objective, start: f.start, url: f.url, readyTimeout: f.readyTimeout, checks: f.check ?? [], protect: f.protect ?? [], timeout: f.timeout });
+  gateOptions(gate.command('run').description('start the app, run Kane and checks, and record a completion assessment'))
+    .action(async (flags: GateFlags, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      const result = await runGate(ctx, toGateOptions(flags));
+      emit(opts, result, renderGate);
+      process.exitCode = result.state === 'verified' ? 0 : 1;
+    });
+  gate.command('status')
+    .description('inspect the last gate result and check its fingerprints')
+    .action(async (_flags: unknown, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      const result = await gateStatus(ctx);
+      emit(opts, result, renderGate);
+      process.exitCode = result.state === 'verified' ? 0 : 1;
+    });
+
+  const recover = program.command('recover').description('verify with Kane and, on a confirmed failure, have a fallback agent fix it and recheck');
+  const renderRecovery = (r: RecoveryRecord) => `Recovery ${r.id}: ${r.status.toUpperCase()}\nRun "relayvora recover report ${r.id}" for the timeline.`;
+  const progressLine = (e: RecoveryEvent) => e.kind === 'gate'
+    ? `[${e.attempt === 0 ? 'initial check' : `recheck ${e.attempt}`}] ${e.state}: ${(e.reasons ?? []).join(' ')}`
+    : e.kind === 'agent' ? `[attempt ${e.attempt}] ${e.agent} finished (${e.timedOut ? 'timed out' : `exit ${e.exitCode}`})` : `[note] ${e.message}`;
+  gateOptions(recover.command('run').description('run the gate, then hand confirmed failures to fallback agents until verified or out of attempts'))
+    .option('--agents <list>', 'fallback agents in rotation (codex, claude)', 'codex,claude')
+    .option('--max-attempts <n>', 'maximum repair attempts', parsePositiveInt, 2)
+    .option('--agent-timeout <seconds>', 'timeout per agent attempt', parsePositiveInt, 1200)
+    .action(async (flags: GateFlags & { agents: string; maxAttempts: number; agentTimeout: number }, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      const record = await runRecovery(ctx, {
+        ...toGateOptions(flags), agents: flags.agents.split(',').map((a) => a.trim()).filter(Boolean), maxAttempts: flags.maxAttempts, agentTimeout: flags.agentTimeout,
+      }, {}, opts.json ? undefined : (e) => process.stderr.write(`${progressLine(e)}\n`));
+      emit(opts, record, renderRecovery);
+      process.exitCode = record.status === 'verified' ? 0 : 1;
+    });
+  recover.command('status [id]')
+    .description('show the latest (or given) recovery result')
+    .action(async (id: string | undefined, _flags: unknown, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      const record = await loadRecovery(ctx, id);
+      emit(opts, record, renderRecovery);
+      process.exitCode = record.status === 'verified' ? 0 : 1;
+    });
+  recover.command('report [id]')
+    .description('print the recovery timeline as Markdown')
+    .action(async (id: string | undefined, _flags: unknown, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      const record = await loadRecovery(ctx, id);
+      emit(opts, record, renderRecoveryReport);
+    });
+
   program
     .command('report [checkpoint]')
     .description('measure a relay: the session that continued it, context per turn, and check results')
-    .option('--reverify', "re-run the checkpoint's verification commands now (asks first for imported checkpoints)")
+    .option('--reverify', "re-run a local checkpoint's verification commands (imported commands are rejected)")
     .option('-y, --yes', 'run the commands of an imported checkpoint without asking')
     .action(async (id: string | undefined, flags: { reverify?: boolean; yes?: boolean }, cmd: Command) => {
       const { opts, ctx } = ctxFor(cmd);

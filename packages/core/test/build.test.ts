@@ -30,6 +30,13 @@ describe('buildCheckpoint', () => {
     expect(buildCheckpoint(input()).warnings.join('\n')).toMatch(/test status is NOT verified/);
   });
 
+  it('preserves an unknown provider verdict even if the process exited successfully', () => {
+    const cp = buildCheckpoint(input({ verifications: [{ ...verification('kane-cli run test --agent', 0), status: 'unknown' }] }));
+    expect(cp.evidence.find((e) => e.id === 'ev-cmd-1')).toMatchObject({ status: 'unknown', exitCode: 0 });
+    expect(cp.task.completed).toHaveLength(0);
+    expect(cp.task.blockers[0]?.text).toContain('result unknown');
+  });
+
   it('labels user input, inferred goals and agent reports by provenance', () => {
     const cp = buildCheckpoint(
       input({

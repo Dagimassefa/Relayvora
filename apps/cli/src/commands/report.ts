@@ -1,14 +1,12 @@
 import {
   RelayvoraError,
   ExitCode,
-  parseCommandLine,
   type AgentAdapter,
   type Checkpoint,
   type SessionSummary,
   type TranscriptDigest,
 } from '@relayvora/core';
 import { loadCheckpoint, runVerification } from '../checkpoint-service.js';
-import { confirmOrAbort } from '../confirm.js';
 import { type CliContext, openStore, selectAdapters } from '../context.js';
 import { locateProject } from '../project.js';
 import { box, compact, label, meter, providerChip, statusIcon } from '../ui/components.js';
@@ -61,10 +59,7 @@ export interface RelayReport {
 export interface ReportOptions {
   /** Re-run the checkpoint's verification commands now. */
   reverify?: boolean;
-  /**
-   * Asks before running commands that came from someone else's checkpoint. The default asks on the
-   * terminal and refuses without one; `--yes` pre-approves.
-   */
+  /** Retained for API compatibility; imported commands are never executed. */
   confirm?: (question: string) => Promise<void>;
   progress?: Progress;
 }
@@ -98,7 +93,7 @@ async function findReceivingSession(
 }
 
 function outcome(command: string, exitCode: number | null, status?: string): CheckOutcome {
-  const s = status === 'passed' || exitCode === 0 ? 'passed' : exitCode !== null && exitCode !== 0 ? 'failed' : 'unknown';
+  const s = status === 'passed' || status === 'failed' || status === 'unknown' ? status : exitCode === 0 ? 'passed' : exitCode !== null && exitCode !== 0 ? 'failed' : 'unknown';
   return { command, status: s, exitCode };
 }
 
@@ -181,7 +176,7 @@ export async function runReport(ctx: CliContext, id: string | undefined, options
     .map((e) => outcome(e.command ?? '?', e.exitCode, e.status));
   let now: CheckOutcome[] | null = null;
   if (options.reverify && atCheckpoint.length) {
-    // Commands in an imported checkpoint were written by the sender: show exactly what would run, and where.
+    // Imported evidence is untrusted and must never supply executable commands.
     const store = openStore(ctx);
     let foreign: boolean;
     try {
@@ -190,23 +185,7 @@ export async function runReport(ctx: CliContext, id: string | undefined, options
       store.close();
     }
     if (foreign) {
-      const listed = atCheckpoint.map((c) => {
-        let argv: string[];
-        try {
-          argv = parseCommandLine(c.command);
-        } catch {
-          argv = [c.command];
-        }
-        return `    ${JSON.stringify(argv)}`;
-      });
-      await (options.confirm ?? ((q) => confirmOrAbort(q)))(
-        [
-          `Checkpoint ${cp.id} was imported${cp.imported ? ` from ${cp.imported.from}` : ''}: its commands were written by someone else.`,
-          `These programs will run as you, in ${cp.project.root}:`,
-          ...listed,
-          'Run them?',
-        ].join('\n'),
-      );
+      throw new RelayvoraError('Cannot reverify commands from an imported checkpoint. Create a local checkpoint with explicitly chosen verification commands.', ExitCode.PreconditionFailed);
     }
   }
   if (options.reverify) {
@@ -215,9 +194,9 @@ export async function runReport(ctx: CliContext, id: string | undefined, options
       const r = await progress.step(
         `Re-running ${c.command}`,
         () => runVerification(c.command, cp.project.root, 600),
-        (v) => (v.exitCode === 0 ? { status: 'ok', detail: 'exit 0' } : { status: 'fail', detail: v.timedOut ? 'timed out' : `exit ${v.exitCode}` }),
+        (v) => ((v.status ? v.status === 'passed' : v.exitCode === 0) ? { status: 'ok', detail: 'exit 0' } : { status: 'fail', detail: v.timedOut ? 'timed out' : v.status === 'unknown' ? 'result unknown' : `exit ${v.exitCode}` }),
       );
-      now.push(outcome(c.command, r.timedOut ? null : r.exitCode));
+      now.push(outcome(c.command, r.timedOut ? null : r.exitCode, r.status));
     }
     if (atCheckpoint.length === 0) notes.push('The checkpoint recorded no verification commands, so there is nothing to re-run.');
   }

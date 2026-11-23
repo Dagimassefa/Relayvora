@@ -90,6 +90,16 @@ describe('checkpoint create', () => {
     expect(r.checkpoint.evidence.find((e) => e.id === 'ev-cmd-1')).toMatchObject({ status: 'unknown', exitCode: null });
   });
 
+  it('requires an objective for Kane and records a runnable browser check in the handoff', async () => {
+    await expect(createCheckpoint(ctx(), { goal: 'x', verify: ['kane'] })).rejects.toThrow(/--kane-objective/);
+    await expect(createCheckpoint(ctx(), { goal: 'x', kaneObjective: 'test' })).rejects.toThrow(/--verify kane/);
+    const objective = 'Open http://localhost:3000 and verify "Save" works';
+    const r = await createCheckpoint(ctx(), { goal: 'Check save', verify: ['kane'], kaneObjective: objective });
+    const evidence = r.checkpoint.evidence.find((e) => e.id === 'ev-cmd-1');
+    expect(evidence?.command).toBe(`kane-cli run ${JSON.stringify(objective)} --agent`);
+    expect(r.checkpoint.handoff.prompt).toContain('kane-cli run');
+  });
+
   it('fails fast on bad input', async () => {
     await expect(createCheckpoint(ctx(), {})).rejects.toMatchObject({ exitCode: 2 });
     await expect(createCheckpoint(ctx(), { goal: 'x', verify: ['a | b'] })).rejects.toMatchObject({ exitCode: 2 });

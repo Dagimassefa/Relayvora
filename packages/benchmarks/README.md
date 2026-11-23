@@ -28,7 +28,7 @@ They record the actual idle interval and provider-reported cache usage. Idle tim
 of cache eviction: providers control their cache lifetimes. These long runs may take hours, depending on the matrix and concurrency.
 
 Codex runs through [`codex exec --json` and `codex exec resume`](https://developers.openai.com/codex/noninteractive)
-in `--full-auto` mode. Prompts use stdin. Token totals come from completed-turn events; per-call context comes from local
+with `-c sandbox_mode=workspace-write` (codex-cli 0.167 removed `--full-auto`). Prompts use stdin. Token totals come from completed-turn events; per-call context comes from local
 session records, deduplicated by cumulative token totals. Input already includes cached input. Codex does not report dollar
 costs, so those values remain **unknown (`?`)**, including combined cost. Claude resumed costs still subtract step A's cumulative cost.
 Results are grouped by agent, scenario and task; they never average different providers or warm/cold conditions together.
@@ -68,3 +68,47 @@ Prices fitted from these runs (fit within 1%): cache read ~$0.20/M tokens, cache
 - Quality was equal or slightly better through the relay (hidden tests 100% vs 96%); n is small.
 
 Caveats: 1-2 runs per arm, one model, non-interactive mode. Treat these as directional, not definitive.
+
+## Verified-recovery benchmark
+
+`recovery.mjs` compares four groups on one task: add Delete to `fixtures/demo-app` (spec and protected regression
+test in `fixtures/demo-app/task`). Each job starts in a fresh Git repository.
+
+| Group | What happens |
+| --- | --- |
+| `single` | One agent, spec only, one attempt, no browser check. |
+| `single-kane` | One Kane check, then one agent attempt given Kane's failure report; no recheck. |
+| `relay-blind` | Agent A attempts from the spec; agent B continues from a Relayvora handoff; no Kane. |
+| `verified-recovery` | `relayvora recover run`: Kane → fallback agent → Kane, up to `--max-attempts`. |
+
+Every group is scored the same way: `relayvora gate run` with a **hidden** Kane objective no agent sees (save two
+items, delete one, refresh, the other must remain) plus the regression test, so the score is bound to the app started
+from the final source.
+
+```sh
+node packages/benchmarks/recovery.mjs                                # plan only
+node packages/benchmarks/recovery.mjs --run --agents claude --reps 3 # spends Kane credits and agent usage
+node packages/benchmarks/recovery.mjs --rescore results/recovery-<file>.json  # rerun only the hidden scoring
+```
+
+### Results (2026-11-23, Claude Code 2.1.330, kane-cli 0.10.8, one repetition)
+
+| | single | single-kane | relay-blind | verified-recovery |
+| --- | --- | --- | --- | --- |
+| Hidden check | verified | verified | verified | verified |
+| Regression test | passed | passed | passed | passed |
+| Work time (before scoring) | 53s | 100s | 58s | 202s |
+| Agent attempts | 1 | 1 | 2 | 1 |
+| Kane runs (incl. scoring) | 1 | 2 | 1 | 3 |
+
+**What it means:** on this task, every approach succeeds, so the benchmark does not separate them; one repetition
+is a demonstration, not a statistical result. Verified recovery cost about 4× the time and two extra Kane runs here for
+the same outcome. Its benefit appears when the first attempt does not work: in the [real recovery run](../../docs/launch/recovery-demo.md)
+Codex failed outright and the loop detected it and handed the task to Claude Code, where the open-loop groups would
+have reported success or stopped. A discriminating benchmark needs harder tasks with failure modes agents commonly miss
+and several repetitions per group. Codex was excluded from this run because the local Codex configuration selected a
+model unavailable to its account.
+
+The first scoring pass reported `stale` for every group: the harness wrote the scorer's state inside the repository, and
+the gate correctly refused to verify a tree that changed during the run. The harness now keeps that state outside the
+repository; scoring was rerun on the same repositories with `--rescore`.
