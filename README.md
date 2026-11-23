@@ -270,7 +270,7 @@ agent can work with Relayvora itself, including agents Relayvora has no adapter 
 
 | Tool                | What the agent can do                                                                              |
 | ------------------- | -------------------------------------------------------------------------------------------------- |
-| `get_handoff`       | Fetch a handoff (default: the latest) to continue; also finds ones synced or sent from elsewhere.  |
+| `get_handoff`       | Fetch a handoff saved here (default: the latest) to continue. Read-only: import shared ones first. |
 | `create_checkpoint` | Save its own goal, completed and pending steps, blockers and decisions, plus Git evidence.         |
 | `list_checkpoints`  | List this project's checkpoints.                                                                   |
 | `inbox`             | Check what teammates sent (fetches the `relayvora/handoffs` branch).                               |

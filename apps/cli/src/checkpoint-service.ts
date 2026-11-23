@@ -27,6 +27,7 @@ import { type CliContext, openStore, selectAdapters } from './context.js';
 import { ensureProject, handoffPath } from './project.js';
 import { enforceRetention } from './retention.js';
 import { SILENT_PROGRESS, type Progress } from './ui/progress.js';
+import { parseKaneResult } from './kane.js';
 
 export interface CreateCheckpointOptions extends UserTaskInput {
   /** Use the latest session of this provider for the project. */
@@ -38,6 +39,8 @@ export interface CreateCheckpointOptions extends UserTaskInput {
   budget?: number;
   /** Commands to run now and record as evidence, e.g. "pnpm test". */
   verify?: string[];
+  /** Plain-English browser objective used by --verify kane. */
+  kaneObjective?: string;
   verifyTimeoutSec?: number;
   /** Set false to skip reading the session transcript. */
   transcript?: boolean;
@@ -109,11 +112,14 @@ export async function runVerification(commandLine: string, cwd: string, timeoutS
       timeoutMs: timeoutSec * 1000,
       env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
     });
+    const kane = /(?:^|[\\/])kane-cli(?:\.cmd|\.exe)?$/i.test(argv[0]!) && argv[1] === 'run' && argv.includes('--agent');
+    const parsed = kane ? parseKaneResult(r.stdout, r.stderr, r.exitCode, r.timedOut, r.truncated) : undefined;
     return {
       command: commandLine,
       exitCode: r.timedOut ? null : r.exitCode,
+      ...(parsed ? { status: parsed.status } : {}),
       timedOut: r.timedOut,
-      output: [r.stdout, r.stderr].filter(Boolean).join('\n'),
+      output: parsed ? parsed.summary : [r.stdout, r.stderr].filter(Boolean).join('\n'),
       durationMs: r.durationMs,
       startedAt,
     };
@@ -143,6 +149,16 @@ export async function createCheckpoint(ctx: CliContext, options: CreateCheckpoin
     );
   }
   const verify = options.verify ?? [];
+  const wantsKane = verify.some((v) => v.trim().toLowerCase() === 'kane');
+  if (wantsKane && !options.kaneObjective?.trim()) {
+    throw new RelayvoraError('--verify kane requires --kane-objective with a URL and expected behavior.', ExitCode.Usage);
+  }
+  if (wantsKane && /[\x00-\x1f]/.test(options.kaneObjective!)) {
+    throw new RelayvoraError('--kane-objective must be a single line without control characters.', ExitCode.Usage);
+  }
+  if (!wantsKane && options.kaneObjective !== undefined) {
+    throw new RelayvoraError('--kane-objective requires --verify kane.', ExitCode.Usage);
+  }
   verify.forEach((v) => parseCommandLine(v)); // fail on bad syntax before doing any work
 
   const store: Store = openStore(ctx);
@@ -222,6 +238,11 @@ export async function createCheckpoint(ctx: CliContext, options: CreateCheckpoin
     // `--verify auto` expands to the project's own typecheck/lint/test commands.
     const commands: string[] = [];
     for (const v of verify) {
+      if (v.trim().toLowerCase() === 'kane') {
+        // JSON quoting is compatible with parseCommandLine and preserves one objective argument.
+        commands.push(`kane-cli run ${JSON.stringify(options.kaneObjective)} --agent`);
+        continue;
+      }
       if (v.trim().toLowerCase() !== 'auto') {
         commands.push(v);
         continue;
@@ -243,7 +264,7 @@ export async function createCheckpoint(ctx: CliContext, options: CreateCheckpoin
         `Running ${command}`,
         () => runVerification(command, project.root, options.verifyTimeoutSec ?? 600),
         (r) =>
-          r.exitCode === 0
+          (r.status ? r.status === 'passed' : r.exitCode === 0)
             ? { status: 'ok', detail: 'exit 0' }
             : { status: 'fail', detail: r.timedOut ? 'timed out' : r.error ? `could not run: ${r.error}` : `exit ${r.exitCode}` },
       );

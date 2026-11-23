@@ -197,8 +197,8 @@ export function buildCheckpoint(input: BuildCheckpointInput): Checkpoint {
   input.verifications.forEach((v, i) => {
     const id = `ev-cmd-${i + 1}`;
     const excerpt = outputExcerpt(v.error ? `${v.error}\n${v.output}` : v.output, { maxChars: LIMITS.outputChars });
-    const failed = v.exitCode !== null && v.exitCode !== 0;
-    const passed = v.exitCode === 0 && !v.timedOut;
+    const failed = v.status ? v.status === 'failed' : v.exitCode !== null && v.exitCode !== 0;
+    const passed = v.status ? v.status === 'passed' : v.exitCode === 0 && !v.timedOut;
     evidence.push({
       id,
       type: TEST_COMMAND.test(v.command) ? 'test' : 'command',
@@ -214,7 +214,7 @@ export function buildCheckpoint(input: BuildCheckpointInput): Checkpoint {
     if (passed) completed.push({ text: `${cmd} passes (exit 0)`, provenance: 'observed', evidenceRefs: [id] });
     else if (failed) blockers.push({ text: `${cmd} fails (exit ${v.exitCode})`, provenance: 'observed', evidenceRefs: [id] });
     else {
-      const why = v.timedOut ? 'timed out' : v.error ? `could not run: ${v.error}` : 'did not finish';
+      const why = v.timedOut ? 'timed out' : v.error ? `could not run: ${v.error}` : 'did not produce a conclusive result';
       blockers.push({ text: `${cmd} ${why}; result unknown`, provenance: 'observed', evidenceRefs: [id] });
     }
   });

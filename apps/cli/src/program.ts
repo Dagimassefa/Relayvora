@@ -28,6 +28,7 @@ import { confirmOrAbort } from './confirm.js';
 import { type CliContext, createContext, otherAgent, selectAdapters } from './context.js';
 import { executeLaunch, planLaunch } from './launch.js';
 import { serveMcp } from './mcp.js';
+import { gateStatus, runGate, type GateRecord } from './completion-gate.js';
 import { emit } from './output.js';
 import { banner, label, providerChip, rule, statusIcon } from './ui/components.js';
 import { highlightMarkdown } from './ui/markdown.js';
@@ -71,6 +72,7 @@ function addCheckpointOptions(cmd: Command): Command {
     .option('--blocker <text>', 'a known blocker; repeatable', collect)
     .option('--decision <text>', 'a decision already made; repeatable', collect)
     .option('--verify <command>', 'run a command (no shell) and record its exit code; "auto" runs the project typecheck/lint/test scripts; repeatable', collect)
+    .option('--kane-objective <text>', 'browser objective for --verify kane (include the URL and expected behavior)')
     .option('--verify-timeout <seconds>', 'timeout per verification command', parsePositiveInt, 600)
     .option('--budget <tokens>', 'token budget for the handoff text (estimated tokens)', parsePositiveInt)
     .option('--no-transcript', 'do not read the session transcript')
@@ -90,6 +92,7 @@ interface CheckpointFlags {
   blocker?: string[];
   decision?: string[];
   verify?: string[];
+  kaneObjective?: string;
   verifyTimeout: number;
   budget?: number;
   transcript: boolean;
@@ -113,6 +116,7 @@ function toCreateOptions(flags: CheckpointFlags, opts: GlobalOptions, ui: Ui): C
   if (flags.session) o.session = flags.session;
   if (flags.to) o.to = flags.to;
   if (flags.goal) o.goal = flags.goal;
+  if (flags.kaneObjective !== undefined) o.kaneObjective = flags.kaneObjective;
   if (flags.budget !== undefined) o.budget = flags.budget;
   o.commits = flags.commits;
   if (flags.commitsSince) o.commitsSince = flags.commitsSince;
@@ -442,10 +446,36 @@ export function buildProgram(ui: Ui = PLAIN_UI): Command {
       await launchWithUi(ctx, cp, flags.to ?? null, flags, ui);
     });
 
+  const gate = program.command('gate').description('run or inspect the fail-closed Kane completion gate');
+  const renderGate = (record: GateRecord) => [
+    `Completion gate: ${record.state.toUpperCase()}`,
+    ...(record.result ? [`Kane: ${record.result.status} (exit ${record.result.exitCode ?? 'unknown'})`, record.result.detail] : []),
+    ...record.reasons.map((reason) => `- ${reason}`),
+  ].filter(Boolean).join('\n');
+  gate.command('run')
+    .description('run Kane and record a completion assessment')
+    .requiredOption('--spec <path>', 'acceptance specification inside the project')
+    .requiredOption('--objective <text>', 'Kane browser objective')
+    .option('--timeout <seconds>', 'Kane timeout in seconds', parsePositiveInt, 600)
+    .action(async (flags: { spec: string; objective: string; timeout: number }, cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      const result = await runGate(ctx, flags);
+      emit(opts, result, renderGate);
+      process.exitCode = 1;
+    });
+  gate.command('status')
+    .description('inspect the last gate result and check its fingerprints')
+    .action(async (cmd: Command) => {
+      const { opts, ctx } = ctxFor(cmd);
+      const result = await gateStatus(ctx);
+      emit(opts, result, renderGate);
+      process.exitCode = 1;
+    });
+
   program
     .command('report [checkpoint]')
     .description('measure a relay: the session that continued it, context per turn, and check results')
-    .option('--reverify', "re-run the checkpoint's verification commands now (asks first for imported checkpoints)")
+    .option('--reverify', "re-run a local checkpoint's verification commands (imported commands are rejected)")
     .option('-y, --yes', 'run the commands of an imported checkpoint without asking')
     .action(async (id: string | undefined, flags: { reverify?: boolean; yes?: boolean }, cmd: Command) => {
       const { opts, ctx } = ctxFor(cmd);

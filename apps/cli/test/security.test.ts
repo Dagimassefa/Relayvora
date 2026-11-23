@@ -91,7 +91,7 @@ describe('checkpoint ids (finding 1)', () => {
 });
 
 describe('imported checkpoints are marked and not trusted (findings 2 and 3)', () => {
-  it('asks before report --reverify runs commands written by someone else, and refuses without a terminal', async () => {
+  it('never runs commands from imported checkpoints, even with confirmation', async () => {
     const marker = path.join(alice, 'REVERIFY_RAN');
     const { checkpoint } = await createCheckpoint(ctxOn(mallory), { goal: 'Run the tests', verify: [node('process.exit(0)')] });
     const { body } = await buildJsonExport(checkpoint, false);
@@ -101,19 +101,13 @@ describe('imported checkpoints are marked and not trusted (findings 2 and 3)', (
     await writeShared(mallory, 'origin', new Map([[`checkpoints/${checkpoint.id}.json`, JSON.stringify(cp)]]), 'share', await identity(mallory));
 
     expect((await runSync(ctxOn(alice), { yes: true })).received).toContain(checkpoint.id);
-    await expect(runReport(ctxOn(alice), checkpoint.id, { reverify: true })).rejects.toThrow(/written by someone else[\s\S]*Confirmation needed/);
-    let asked = '';
+    await expect(runReport(ctxOn(alice), checkpoint.id, { reverify: true })).rejects.toThrow(/Cannot reverify commands from an imported checkpoint/);
     await expect(
       runReport(ctxOn(alice), checkpoint.id, {
         reverify: true,
-        confirm: async (q) => {
-          asked = q;
-          throw new Error('Cancelled.');
-        },
+        confirm: async () => {},
       }),
-    ).rejects.toThrow('Cancelled.');
-    expect(asked).toContain(process.execPath.replace(/\\/g, '\\\\'));
-    expect(asked).toContain(alice);
+    ).rejects.toThrow(/Cannot reverify commands from an imported checkpoint/);
     expect(fs.existsSync(marker)).toBe(false);
   });
 

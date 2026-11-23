@@ -141,6 +141,8 @@ export interface VerificationResult {
   /** The command line as the user typed it. */
   command: string;
   exitCode: number | null;
+  /** Provider-specific verdict, when an exit code alone is insufficient. */
+  status?: 'passed' | 'failed' | 'unknown';
   timedOut: boolean;
   /** Set when the command could not be started at all. */
   error?: string;
