@@ -1,16 +1,44 @@
-# Experimental completion gate
+# Completion gate
 
-From a Git project with Kane installed and signed in, start the application and run:
+The gate answers one question: did an independent browser check pass against an app built from exactly this source? It runs Kane CLI against an app that Relayvora itself starts, runs your regression checks, and fails closed on anything it cannot establish.
+
+From a Git project with Kane installed and signed in (stop any server already using the port):
 
 ```sh
-relayvora gate run --spec task.md --objective "Open http://localhost:3000, save an item, and verify it remains after refresh"
+relayvora gate run --spec task.md \
+  --objective "Open http://localhost:3000, save an item, and verify it remains after refresh" \
+  --start "node server.mjs" --url http://localhost:3000/ \
+  --check "npm test" --protect test/app.test.js
 relayvora gate status
 ```
 
-The gate fingerprints HEAD, the index, tracked and non-ignored untracked file contents, and the specified acceptance file. It records a redacted Kane result in Relayvora's local data directory. A functional failure produces `recovery_required`; a changed source or specification produces `stale`; an incomplete result produces `blocked`. Subsequent runs retain the initial specification and objective as a baseline. Both commands currently return a nonzero exit code because verified completion is unavailable.
+## States
 
-**A passing Kane run is also blocked.** The gate has no trusted method yet to prove that the browser reached an application built from the fingerprinted source. It therefore never reports `verified`. This is an experimental component, not an enforced end-to-end completion workflow. Regular checkpoints and handoffs do not use this gate.
+| State | Meaning | Exit code |
+| --- | --- | --- |
+| `verified` | Kane passed against the app Relayvora started from the fingerprinted tree, every `--check` passed, the app process stayed alive, and nothing changed during the run. | 0 |
+| `recovery_required` | Kane confirmed an application defect, or a regression check failed. | 1 |
+| `blocked` | Something could not be established: no `--start`/`--url`, the app did not start, the port was already in use, the app exited mid-run, Kane was inconclusive or blamed itself, or a check timed out. | 1 |
+| `stale` | Source, specification or protected files changed during or after the run. | 1 |
 
-The fingerprint excludes ignored files except for the explicitly named specification; external services, environment variables, dependencies and runtime state are not covered. The state file is local and writable by the same user or agent; the baseline is not tamper-resistant. There is no run lock yet. Do not use this gate as a security boundary or as proof of acceptance-test integrity. State reports are locally stored summaries, not original Kane evidence packs.
+## How the runtime is bound to the source
 
-Changing the specification or objective requires a new, separately authorized task; task selection and baseline reset are not implemented yet. To protect the existing baseline, this prototype refuses to replace it automatically.
+1. Relayvora fingerprints HEAD, the index, and the contents of tracked and non-ignored untracked files; the spec and each `--protect` file are fingerprinted separately.
+2. It refuses to start if anything already listens on `--url`, so a stale server cannot answer.
+3. It starts `--start` (no shell) in the project root with `PORT` set, and waits until the URL answers.
+4. Kane runs with `--url` pointed at that app. URLs in the objective must have the same origin.
+5. Regression checks run against the same tree.
+6. It stops the app's whole process tree and fingerprints again. Only an unchanged fingerprint and an app process that stayed alive throughout allow `verified`.
+
+## Locked acceptance criteria
+
+The first run locks the spec, the protected files and the objective. Later runs refuse to proceed if any changed: start a new task (remove the gate state) instead of editing the baseline. Gate state is HMAC-signed with a per-user key in Relayvora's data directory; edited state is rejected, and `gate status` always recomputes fingerprints. One gate or recovery runs per project at a time (a lock left by a dead process is taken over).
+
+## Limits
+
+- The fingerprint does not cover ignored files (build output, `node_modules`), dependencies, environment variables, databases or external services. Use a `--start` command that runs or builds from source; a start command that serves a stale ignored build can pass.
+- The signing key and state are readable by the same OS user, so an agent running as that user could forge them. The gate is an integrity check against accidents and naive edits, not a security boundary against a hostile local process.
+- `verified` is evidence of the objective and checks you supplied, not of requirements they do not cover.
+- Relayvora records Kane's evidence-pack path but does not copy or seal the pack.
+
+See [Kane verification](kane-verification.md) for result parsing and [recovery](recovery.md) for automatic repair.

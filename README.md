@@ -304,6 +304,22 @@ launched or pasted) and shows, from the agents' own usage records: turns, durati
 payback estimate, and with `--reverify` whether the checkpoint's checks pass now. Results are summarised on the home
 screen.
 
+### Verified recovery with Kane (experimental)
+
+```sh
+relayvora recover run --spec spec.md --protect test/app.test.js \
+  --objective "Open http://localhost:3000/, delete an item with its Delete button, refresh, and verify it is gone" \
+  --start "node server.mjs" --url http://localhost:3000/ --check "npm test" --agents codex,claude
+relayvora recover report
+```
+
+Relayvora starts the app from the checked-out source and has [Kane CLI](https://www.npmjs.com/package/@testmuai/kane-cli)
+check it in a real browser. When Kane confirms a defect, a fallback agent gets Kane's findings, then Relayvora restarts the
+app and checks again, up to a retry limit. It only reports **verified** when Kane passed against the app it started from the
+unchanged source and every check passed; the spec and protected tests are locked. `relayvora gate run` does one check with
+no repair. See [completion gate](docs/completion-gate.md), [recovery](docs/recovery.md) and a
+[real recovery report](docs/launch/recovery-demo.md).
+
 ## Terminal output
 
 Colour adapts to the terminal and turns off when output is piped, with `--json`, `--no-color` or `NO_COLOR`
