@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c0c14">
+  <title>Verified recovery with Kane CLI: test, fix, retest</title>
+  <meta name="description" content="Relayvora starts your app from the exact source, has Kane CLI test it in a real browser, hands confirmed bugs to Codex or Claude Code, and checks again until it is verified.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <link rel="canonical" href="https://dagimassefa.github.io/Relayvora/kane-verified-recovery/">
+  <meta property="og:site_name" content="Relayvora">
+  <meta property="og:title" content="Verified recovery with Kane CLI: test, fix, retest">
+  <meta property="og:description" content="Relayvora starts your app from the exact source, has Kane CLI test it in a real browser, hands confirmed bugs to Codex or Claude Code, and checks again until it is verified.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://dagimassefa.github.io/Relayvora/kane-verified-recovery/">
+  <meta property="og:image" content="https://dagimassefa.github.io/Relayvora/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Verified recovery with Kane CLI: test, fix, retest">
+  <meta name="twitter:description" content="Relayvora starts your app from the exact source, has Kane CLI test it in a real browser, hands confirmed bugs to Codex or Claude Code, and checks again until it is verified.">
+  <meta name="twitter:image" content="https://dagimassefa.github.io/Relayvora/og-image.png">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Relayvora",
+          "item": "https://dagimassefa.github.io/Relayvora/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Verified recovery with Kane",
+          "item": "https://dagimassefa.github.io/Relayvora/kane-verified-recovery/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What does verified mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Kane passed against the app Relayvora started from the fingerprinted source, every regression check passed, the app process stayed alive, and the source, spec and protected files did not change during the run. It covers the objective and checks you supplied, not requirements they leave out."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can the fixing agent cheat by editing the spec or tests?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The spec, the objective and any files passed with --protect are locked on the first run. If an agent changes them, the recovery stops as blocked. Tests you do not protect are not locked."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it give agents extra permissions?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Codex runs with the workspace-write sandbox and Claude Code with acceptEdits. Relayvora never passes sandbox or permission bypass flags."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is it available on npm?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not yet. The gate and recover commands are experimental and unreleased; build Relayvora from source to try them. Checkpoints, handoffs and the rest of Relayvora are on npm."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="header wrap">
+    <a class="wordmark" href="../" aria-label="Relayvora home"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 7h15l-6 9h10l-8 10H4l7-9H3z" fill="currentColor"/><path d="M23 5h6v6h-6z" fill="#ff2bd6"/></svg>relayvora<span class="alpha">ALPHA</span></a>
+    <nav aria-label="Main navigation"><a href="../#how-it-works">How it works</a><a href="../#why-relay">Why relay?</a><a href="https://github.com/Dagimassefa/Relayvora#commands">Docs <span aria-hidden="true">↗</span></a></nav>
+    <a class="github-link" href="https://github.com/Dagimassefa/Relayvora"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .8a11.2 11.2 0 0 0-3.54 21.83c.56.1.76-.24.76-.54v-2.1c-3.12.68-3.78-1.32-3.78-1.32-.51-1.29-1.24-1.64-1.24-1.64-1.02-.7.08-.68.08-.68 1.13.08 1.72 1.16 1.72 1.16 1 1.71 2.62 1.22 3.26.93.1-.73.39-1.22.71-1.5-2.49-.28-5.11-1.24-5.11-5.54 0-1.23.44-2.23 1.15-3.02-.12-.29-.5-1.43.11-2.97 0 0 .94-.3 3.08 1.15a10.7 10.7 0 0 1 5.6 0c2.14-1.45 3.08-1.15 3.08-1.15.61 1.54.23 2.68.11 2.97.72.79 1.15 1.79 1.15 3.02 0 4.31-2.62 5.25-5.12 5.53.4.35.76 1.03.76 2.08v3.08c0 .3.2.65.77.54A11.2 11.2 0 0 0 12 .8Z"/></svg><span>GitHub</span><span aria-hidden="true">↗</span></a>
+  </header>
+  <main id="main" class="guide wrap">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../">Relayvora</a><span aria-hidden="true">/</span><span aria-current="page">Verified recovery with Kane</span></nav>
+    <article>
+      <p class="eyebrow">GUIDE / EXPERIMENTAL</p>
+      <h1>Done means it works in the browser.</h1>
+      <p class="guide-lede">Coding agents often say “done” when the app is not. Relayvora starts your app from the exact source on disk, has <a href="https://www.npmjs.com/package/@testmuai/kane-cli">Kane CLI</a> test it in a real browser, and when Kane confirms a bug, hands Kane’s findings to Codex or Claude Code, restarts the app from the fix, and checks again.</p>
+      <div class="guide-install"><code>relayvora recover run</code><span>Experimental · unreleased · build from source</span></div>
+
+<h2>Run it</h2>
+<p>Install Kane CLI and sign in, stop anything already using the app’s port, then from your project:</p>
+<pre class="guide-code"><code>npm install -g @testmuai/kane-cli &amp;&amp; kane-cli login --oauth
+
+relayvora recover run --spec spec.md --protect test/app.test.js \
+  --objective "Open http://localhost:3000/, delete an item with its Delete button, refresh, and verify it is gone" \
+  --start "node server.mjs" --url http://localhost:3000/ \
+  --check "npm test" --agents codex,claude --max-attempts 2
+
+relayvora recover report</code></pre>
+<p>For a single check without repair, use <code>relayvora gate run</code> with the same options.</p>
+
+<h2>What happens</h2>
+<div class="guide-table"><table>
+  <thead><tr><th>Step</th><th>What Relayvora does</th></tr></thead>
+  <tbody>
+    <tr><td>Check</td><td>Fingerprints the source, refuses if the port is already taken, starts the app, points Kane at it and runs your regression checks.</td></tr>
+    <tr><td>Brief</td><td>On a confirmed defect, gives the next agent the objective, the locked spec, Kane’s verdict and step notes, failing check output and earlier attempts.</td></tr>
+    <tr><td>Fix</td><td>Runs the agent headlessly in the project: Codex in its workspace-write sandbox, Claude Code with acceptEdits. No permission bypasses.</td></tr>
+    <tr><td>Recheck</td><td>Restarts the app from the new source and runs Kane and every check again, until verified or out of attempts.</td></tr>
+  </tbody>
+</table></div>
+
+<h2>A real run</h2>
+<p>On a small list app missing its Delete button: Kane failed it (“saved list items have no Delete button”, a confirmed product bug). Codex, the first agent, crashed on its model configuration and changed nothing; the recheck still failed. Claude Code, the fallback, added the button and a delete route. Kane then passed, the regression test passed, and the locked files were untouched: <strong>verified</strong>, in about five minutes. <a href="https://github.com/Dagimassefa/Relayvora/blob/main/docs/launch/recovery-demo.md">Read the full report ↗</a></p>
+
+<h2>Why you can trust “verified”</h2>
+<p>Relayvora only reports verified when Kane passed against the app it started itself from the fingerprinted source, every check passed, the app stayed up for the whole run, and nothing changed meanwhile. The spec, objective and protected tests are locked, so an agent cannot pass by rewriting them. Kane’s output is treated as evidence, never as instructions, and its suggestions are marked unverified.</p>
+<p>Limits, stated plainly: ignored files, dependencies, environment and external services are outside the fingerprint; state files guard against accidents, not a hostile process running as you; and a first benchmark on this task found every approach succeeded, so it does not yet show when recovery wins. <a href="https://github.com/Dagimassefa/Relayvora/blob/main/docs/completion-gate.md">Gate details ↗</a></p>
+      <h2>Questions</h2>
+      <div class="faq-list"><details><summary>What does verified mean?<span aria-hidden="true">+</span></summary><p>Kane passed against the app Relayvora started from the fingerprinted source, every regression check passed, the app process stayed alive, and the source, spec and protected files did not change during the run. It covers the objective and checks you supplied, not requirements they leave out.</p></details><details><summary>Can the fixing agent cheat by editing the spec or tests?<span aria-hidden="true">+</span></summary><p>The spec, the objective and any files passed with <code>--protect</code> are locked on the first run. If an agent changes them, the recovery stops as blocked. Tests you do not protect are not locked.</p></details><details><summary>Does it give agents extra permissions?<span aria-hidden="true">+</span></summary><p>No. Codex runs with the workspace-write sandbox and Claude Code with acceptEdits. Relayvora never passes sandbox or permission bypass flags.</p></details><details><summary>Is it available on npm?<span aria-hidden="true">+</span></summary><p>Not yet. The <code>gate</code> and <code>recover</code> commands are experimental and unreleased; build Relayvora from source to try them. Checkpoints, handoffs and the rest of Relayvora are on npm.</p></details></div>
+      <div class="guide-next"><p>More guides</p><a href="../switch-claude-code-codex/">Switch between agents</a><a href="../mcp-server/">MCP server</a><a href="../#get-started">Get started</a></div>
+    </article>
+  </main>
+  <footer class="footer wrap"><div><a class="wordmark" href="../">relayvora<span class="cyan">↗</span></a><p>Same mission. Fresh context.</p></div><div class="footer-links"><a href="../claude-code-usage-limit/">Claude Code usage limit</a><a href="../switch-claude-code-codex/">Switch between agents</a><a href="../mcp-server/">MCP server</a><a href="../kane-verified-recovery/">Verified recovery</a><a href="https://github.com/Dagimassefa/Relayvora">Source ↗</a><a href="https://github.com/Dagimassefa/Relayvora/blob/main/LICENSE">MIT license ↗</a></div><span class="footer-note">BUILT FOR THE NEXT STEP.</span></footer>
+</body>
+</html>

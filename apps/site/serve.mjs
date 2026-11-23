@@ -10,7 +10,8 @@ const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=
 const server = createServer(async (request, response) => {
   try {
     const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-    const path = resolve(root, `.${pathname === '/' ? '/index.html' : pathname}`);
+    // Like GitHub Pages: a folder URL serves its index.html (the guide pages).
+    const path = resolve(root, `.${pathname.endsWith('/') ? `${pathname}index.html` : pathname}`);
     if (!path.startsWith(`${root}${sep}`)) {
       response.writeHead(403).end('Forbidden');
       return;
