@@ -49,7 +49,7 @@ async function agentPath(agent) {
 async function invokeAgent(bin, agent, cwd, prompt, resume) {
   // Prompts use stdin so Windows batch shims never interpret task text.
   const argv = agent === 'codex'
-    ? ['exec', ...(resume ? ['resume', resume] : []), '--json', '--full-auto', '-']
+    ? ['exec', ...(resume ? ['resume', resume] : []), '--json', '-c', 'sandbox_mode=workspace-write', '-']
     : ['-p', '--output-format', 'json', '--permission-mode', 'acceptEdits', '--allowedTools', ...ALLOWED_TOOLS, ...(resume ? ['--resume', resume] : [])];
   const started = new Date();
   const r = await run(bin, argv, { cwd, input: prompt });

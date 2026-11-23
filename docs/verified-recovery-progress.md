@@ -6,32 +6,21 @@ Last updated: November 23, 2026.
 
 | Task | Status | Remaining work |
 | --- | --- | --- |
-| 1. Real Kane verification | Built and run for real | Done on kane-cli 0.10.8 against `fixtures/demo-app`: a real pass, a real confirmed product bug, and a real `checkpoint create --verify kane` handoff. Parser tests include scrubbed recordings of those runs. Open: evidence packs are referenced by path, not sealed or copied. |
-| 2. Completion gate | Prototype built | Bind the running application to the fingerprinted source, protect acceptance definitions from tampering, and enforce the gate in the recovery workflow. The prototype cannot mark a task verified. |
-| 3. Cross-agent recovery | Not built | Add a controller, fallback selection, persistent recovery state, and failure-aware briefing. |
-| 4. Automatic repair and recheck | Not built | Launch the fallback agent, refresh the app, rerun Kane and regression checks, and enforce retry limits. |
-| 5. Security and reliability | Started | Imported checkpoint commands are blocked from re-execution; the recovery workflow still needs locks, stronger evidence protection, and security testing. |
-| 6. Report and real demo | Not built | Produce a recovery timeline and demonstrate Claude → Kane → Codex → Kane with real executions. |
-| 7. Comparative benchmarks | Not built | Run the four comparison groups and publish actual results and methodology. |
-| 8. Submission preparation | Not complete | Confirm eligibility, complete documentation, record the demo, and prepare the submission. |
+| 1. Real Kane verification | Done, run for real | Real pass, real confirmed product bug and a real `checkpoint create --verify kane` handoff on kane-cli 0.10.8. The parser uses Kane's structured verdict; tests include scrubbed recordings. Evidence packs are referenced by path, not sealed or copied. |
+| 2. Completion gate | Done | `gate run --start --url` starts the app from the fingerprinted tree, refuses an occupied port, points Kane at it, runs `--check` regression commands, and reports `verified` only if the app stayed alive and nothing changed. Spec, `--protect` files and objective are locked. See `docs/completion-gate.md`. |
+| 3. Cross-agent recovery | Done | `recover run` with rotating fallback agents (Codex, Claude Code), persistent signed recovery records and failure-aware briefings built from Kane's verdict. |
+| 4. Automatic repair and recheck | Done | Headless agent runs (no sandbox or permission bypass), app restart from the new tree, Kane and regression rerun, `--max-attempts` limit. |
+| 5. Security and reliability | Done for this scope | Project lock with dead-owner takeover, HMAC-signed gate and recovery state, locked spec and protected files, fenced untrusted Kane output, process-tree shutdown, local-only app URLs, objective origin check, security tests. Not a boundary against a hostile same-user process. |
+| 6. Report and real demo | Done | `recover report` timeline. Real run: Kane failed → Codex crashed (model config) → Kane failed → Claude Code fixed → Kane passed, **verified** (`docs/launch/recovery-demo.md`). Planned order was Claude → Kane → Codex → Kane; the real run went Kane → Codex → Kane → Claude → Kane. |
+| 7. Comparative benchmarks | First run published | Four groups, hidden Kane objective, one repetition with Claude Code: all four verified, so this task does not discriminate. Needs harder tasks, more repetitions, and Codex once its model config is fixed. See `packages/benchmarks/README.md`. |
+| 8. Submission preparation | Drafted | `docs/launch/submission.md`. Owner actions: confirm eligibility with organizers, fix the Codex model setting, record the demo, submit. |
 
-The immediate priority is runtime-to-source verification so the gate can safely establish verified completion. Kane is installed and authenticated on the development machine; Claude CLI was not on PATH when last checked. The repository predates the hackathon's stated November 12 cutoff; organizer confirmation is needed before relying on a new extension that depends on Relayvora.
+## Facts to keep straight
 
-## Implemented
-
-- Existing checkpoint, Git evidence, handoff and agent launch flows remain in use.
-- `--verify kane --kane-objective` invokes Kane's one-shot agent mode and includes its observed result in a handoff.
-- A Kane pass requires a consistent terminal event and exit status. Missing, truncated, contradictory and infrastructure-error output is unknown. Failed step remarks and available session/evidence hints are included in the redacted excerpt.
-- Existing `report --reverify` repeats local commands and compares outcomes. Commands from imported checkpoints are rejected even with confirmation.
-- Experimental `gate run` and `gate status` record a Kane result and check fingerprints of the repository and acceptance specification. The gate never reports verified because runtime-to-source binding is not implemented. See `docs/completion-gate.md` for scope and limitations.
-
-## Not yet implemented or demonstrated
-
-- Enforced completion across the recovery workflow, runtime freshness, tamper-resistant acceptance criteria, structured evidence packs, durable recovery state and bounded automatic agent repair.
-- The comparative benchmark, recovery report and real Claude-to-Codex demonstration described in the engineering note.
-- Real Kane browser runs have been made (November 23, 2026); no real cross-agent recovery has been made or claimed yet.
-- The existing repository's first commit is dated November 11, 2026. Organizer approval is needed before treating this old codebase or a new extension depending on it as eligible. Do not rewrite history or present old code as new.
+- The repository's first commit is dated November 11, 2026, before the stated November 12 cutoff. Organizer approval is needed before treating this codebase, or the Kane extension built on it, as eligible. Do not rewrite history or present old code as new.
+- `~/.codex/config.toml` on the development machine sets `model = "gpt-5.4"`, which Codex rejects for a ChatGPT login; that is why Codex failed in the demo and was left out of the benchmark.
+- Claude Code was found bundled in the VS Code extension (2.1.330), not on PATH.
 
 ## Design decisions and limitations
 
-Kane documents `run_end` as the completion event and typeless failed progress records. Real 0.10.8 output also carries a `reason_code` and a `verdict` on failure, which Relayvora uses but does not depend on; step remarks and verdicts are Kane's observations, not independent assertion objects. Output excerpts are redacted, but Kane's own session files and evidence packs remain under Kane's control and may contain sensitive information. A passing command is evidence of that browser run, not verified completion of a recovery task or proof that a server used the current source.
+Kane documents `run_end` as the completion event and typeless failed progress records. Real 0.10.8 output also carries a `reason_code` and a `verdict` on failure, which Relayvora uses but does not depend on; a failure Kane blames on itself or leaves unconfirmed is `unknown`, not a defect. Kane's session files and evidence packs remain under Kane's control and may contain sensitive information; Relayvora never records Kane's shareable `test_url`. The fingerprint excludes ignored files, dependencies, environment and external services, so `verified` is evidence for the supplied objective and checks against the app Relayvora started, not proof of everything a task requires.

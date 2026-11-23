@@ -1,0 +1,92 @@
+{
+  "when": "2026-11-23T09:51:44.623Z",
+  "maxAttempts": 2,
+  "agents": [
+    "claude"
+  ],
+  "results": [
+    {
+      "group": "single",
+      "agent": "claude",
+      "rep": 1,
+      "steps": [
+        {
+          "agent": "claude",
+          "exit": 0,
+          "ms": 52459
+        }
+      ],
+      "workMs": 52519,
+      "hidden": "verified",
+      "hiddenKane": "passed",
+      "regression": "passed",
+      "rescoredAt": "2026-11-23T09:54:04.377Z"
+    },
+    {
+      "group": "single-kane",
+      "agent": "claude",
+      "rep": 1,
+      "steps": [
+        {
+          "kane": "recovery_required",
+          "ms": 47285
+        },
+        {
+          "agent": "claude",
+          "exit": 0,
+          "ms": 52274
+        }
+      ],
+      "workMs": 99562,
+      "hidden": "verified",
+      "hiddenKane": "passed",
+      "regression": "passed",
+      "rescoredAt": "2026-11-23T09:55:43.159Z"
+    },
+    {
+      "group": "relay-blind",
+      "agent": "claude",
+      "rep": 1,
+      "steps": [
+        {
+          "agent": "claude",
+          "exit": 0,
+          "ms": 33412
+        },
+        {
+          "agent": "claude",
+          "exit": 0,
+          "ms": 23419
+        }
+      ],
+      "workMs": 57532,
+      "hidden": "verified",
+      "hiddenKane": "passed",
+      "regression": "passed",
+      "rescoredAt": "2026-11-23T09:57:08.426Z"
+    },
+    {
+      "group": "verified-recovery",
+      "agent": "claude",
+      "rep": 1,
+      "steps": [
+        {
+          "recovery": "verified",
+          "events": [
+            "gate:recovery_required",
+            "agent:claude",
+            "gate:verified"
+          ],
+          "ms": 201781
+        }
+      ],
+      "workMs": 201781,
+      "hidden": "verified",
+      "hiddenKane": "passed",
+      "regression": "passed",
+      "rescoredAt": "2026-11-23T09:58:39.037Z"
+    }
+  ],
+  "root": "<tmp>/relayvora-recovery-bench",
+  "note": "Scored after fixing a harness bug (score state was written inside the repo, so the gate correctly reported stale); scoring rerun with --rescore on the same repositories."
+}
