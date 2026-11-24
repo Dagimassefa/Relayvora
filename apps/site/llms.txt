@@ -15,6 +15,7 @@ Key facts:
 - [Claude Code usage limit](https://dagimassefa.github.io/Relayvora/claude-code-usage-limit/): Claude Code says "You've hit your session limit"? Hand the unfinished task to Codex or OpenCode in one command, with real Git changes and test results.
 - [Switch between agents](https://dagimassefa.github.io/Relayvora/switch-claude-code-codex/): Move an unfinished coding task between Claude Code, Codex and OpenCode without losing context. One command, a short handoff, real Git changes and test results.
 - [MCP server](https://dagimassefa.github.io/Relayvora/mcp-server/): Add the Relayvora MCP server to Claude Code, Codex, Cursor, Windsurf or VS Code Copilot so any agent can fetch handoffs and save checkpoints itself.
+- [Verified recovery with Kane](https://dagimassefa.github.io/Relayvora/kane-verified-recovery/): Experimental, relayvora 0.1.0-alpha.6 and later. Relayvora starts the app from the exact source, has Kane CLI test it in a browser, hands confirmed bugs to Codex or Claude Code, and rechecks until verified.
 
 ## Links
 - [Website](https://dagimassefa.github.io/Relayvora/)

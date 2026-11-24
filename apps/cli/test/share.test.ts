@@ -49,6 +49,10 @@ beforeEach(async () => {
   await clone(remote, bob, 'Bob', 'bob@example.com');
 });
 
+// Each test runs dozens of git processes across simulated devices; under a full parallel run on Windows
+// that can exceed the 30s default without anything being wrong.
+const GIT_HEAVY_TIMEOUT = 120_000;
+
 describe('sync between your own devices', () => {
   it('gives every device the full history, without touching the checked-out branch', async () => {
     const a = (await createCheckpoint(ctxOn(laptop), { goal: 'Bump the version' })).checkpoint.id;
@@ -73,7 +77,7 @@ describe('sync between your own devices', () => {
       expect(await git(dir, 'status', '--porcelain')).toBe('');
       expect((await git(dir, 'branch', '--show-current')).trim()).toBe('main');
     }
-  });
+  }, GIT_HEAVY_TIMEOUT);
 });
 
 describe('send and inbox', () => {
@@ -102,5 +106,5 @@ describe('send and inbox', () => {
 
     expect((await runInbox(ctxOn(desktop))).items).toEqual([]); // sent to Bob, not to Alice
     expect((await runInbox(ctxOn(desktop), { sent: true })).items.map((i) => i.to)).toEqual([['bob@example.com']]);
-  });
+  }, GIT_HEAVY_TIMEOUT);
 });

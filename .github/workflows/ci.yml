@@ -26,7 +26,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/relayvora-site"
           cp apps/site/index.html apps/site/404.html apps/site/styles.css apps/site/site.js apps/site/favicon.svg apps/site/og-image.png apps/site/sitemap.xml apps/site/llms.txt "$RUNNER_TEMP/relayvora-site/"
-          for guide in claude-code-usage-limit switch-claude-code-codex mcp-server; do
+          for guide in claude-code-usage-limit switch-claude-code-codex mcp-server kane-verified-recovery; do
             mkdir -p "$RUNNER_TEMP/relayvora-site/$guide"
             cp "apps/site/$guide/index.html" "$RUNNER_TEMP/relayvora-site/$guide/"
           done
