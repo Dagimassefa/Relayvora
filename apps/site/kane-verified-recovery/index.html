@@ -73,7 +73,7 @@
           "name": "Is it available on npm?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Not yet. The gate and recover commands are experimental and unreleased; build Relayvora from source to try them. Checkpoints, handoffs and the rest of Relayvora are on npm."
+            "text": "Yes, from relayvora 0.1.0-alpha.6: npm install -g relayvora. The gate and recover commands are experimental. You also need Kane CLI, signed in, and Codex or Claude Code for repairs."
           }
         }
       ]
@@ -97,11 +97,12 @@
       <p class="eyebrow">GUIDE / EXPERIMENTAL</p>
       <h1>Done means it works in the browser.</h1>
       <p class="guide-lede">Coding agents often say “done” when the app is not. Relayvora starts your app from the exact source on disk, has <a href="https://www.npmjs.com/package/@testmuai/kane-cli">Kane CLI</a> test it in a real browser, and when Kane confirms a bug, hands Kane’s findings to Codex or Claude Code, restarts the app from the fix, and checks again.</p>
-      <div class="guide-install"><code>relayvora recover run</code><span>Experimental · unreleased · build from source</span></div>
+      <div class="guide-install"><code>relayvora recover run</code><span>Experimental · relayvora 0.1.0-alpha.6+</span></div>
 
 <h2>Run it</h2>
 <p>Install Kane CLI and sign in, stop anything already using the app’s port, then from your project:</p>
-<pre class="guide-code"><code>npm install -g @testmuai/kane-cli &amp;&amp; kane-cli login --oauth
+<pre class="guide-code"><code>npm install -g relayvora @testmuai/kane-cli
+kane-cli login --oauth
 
 relayvora recover run --spec spec.md --protect test/app.test.js \
   --objective "Open http://localhost:3000/, delete an item with its Delete button, refresh, and verify it is gone" \
@@ -129,7 +130,7 @@ relayvora recover report</code></pre>
 <p>Relayvora only reports verified when Kane passed against the app it started itself from the fingerprinted source, every check passed, the app stayed up for the whole run, and nothing changed meanwhile. The spec, objective and protected tests are locked, so an agent cannot pass by rewriting them. Kane’s output is treated as evidence, never as instructions, and its suggestions are marked unverified.</p>
 <p>Limits, stated plainly: ignored files, dependencies, environment and external services are outside the fingerprint; state files guard against accidents, not a hostile process running as you; and a first benchmark on this task found every approach succeeded, so it does not yet show when recovery wins. <a href="https://github.com/Dagimassefa/Relayvora/blob/main/docs/completion-gate.md">Gate details ↗</a></p>
       <h2>Questions</h2>
-      <div class="faq-list"><details><summary>What does verified mean?<span aria-hidden="true">+</span></summary><p>Kane passed against the app Relayvora started from the fingerprinted source, every regression check passed, the app process stayed alive, and the source, spec and protected files did not change during the run. It covers the objective and checks you supplied, not requirements they leave out.</p></details><details><summary>Can the fixing agent cheat by editing the spec or tests?<span aria-hidden="true">+</span></summary><p>The spec, the objective and any files passed with <code>--protect</code> are locked on the first run. If an agent changes them, the recovery stops as blocked. Tests you do not protect are not locked.</p></details><details><summary>Does it give agents extra permissions?<span aria-hidden="true">+</span></summary><p>No. Codex runs with the workspace-write sandbox and Claude Code with acceptEdits. Relayvora never passes sandbox or permission bypass flags.</p></details><details><summary>Is it available on npm?<span aria-hidden="true">+</span></summary><p>Not yet. The <code>gate</code> and <code>recover</code> commands are experimental and unreleased; build Relayvora from source to try them. Checkpoints, handoffs and the rest of Relayvora are on npm.</p></details></div>
+      <div class="faq-list"><details><summary>What does verified mean?<span aria-hidden="true">+</span></summary><p>Kane passed against the app Relayvora started from the fingerprinted source, every regression check passed, the app process stayed alive, and the source, spec and protected files did not change during the run. It covers the objective and checks you supplied, not requirements they leave out.</p></details><details><summary>Can the fixing agent cheat by editing the spec or tests?<span aria-hidden="true">+</span></summary><p>The spec, the objective and any files passed with <code>--protect</code> are locked on the first run. If an agent changes them, the recovery stops as blocked. Tests you do not protect are not locked.</p></details><details><summary>Does it give agents extra permissions?<span aria-hidden="true">+</span></summary><p>No. Codex runs with the workspace-write sandbox and Claude Code with acceptEdits. Relayvora never passes sandbox or permission bypass flags.</p></details><details><summary>Is it available on npm?<span aria-hidden="true">+</span></summary><p>Yes, from relayvora 0.1.0-alpha.6: <code>npm install -g relayvora</code>. The <code>gate</code> and <code>recover</code> commands are experimental. You also need Kane CLI, signed in, and Codex or Claude Code for repairs.</p></details></div>
       <div class="guide-next"><p>More guides</p><a href="../switch-claude-code-codex/">Switch between agents</a><a href="../mcp-server/">MCP server</a><a href="../#get-started">Get started</a></div>
     </article>
   </main>

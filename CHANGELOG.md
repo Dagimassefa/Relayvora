@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-alpha.6
 
 - `--verify kane --kane-objective` runs [Kane CLI](https://www.npmjs.com/package/@testmuai/kane-cli) in a checkpoint and
   records its result in the handoff, including Kane's verdict (reason, bug, root cause, unverified suggestion) and
